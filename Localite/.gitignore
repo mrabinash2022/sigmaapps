@@ -1,0 +1,25 @@
+node_modules/
+dist/
+build/
+.expo/
+.expo-shared/
+.expo-tmp-export/
+expo-qr.png
+*.log
+
+# ── Secrets — NEVER commit ──────────────────────────────────
+.env
+.env.*
+!.env.example
+dev.local
+**/dev.local
+*.dev.local
+.env.local
+.env.development.local
+.env.production.local
+secrets/
+**/secrets/
+
+# Uploads (user-generated content)
+apps/api/uploads/*
+!apps/api/uploads/.gitkeep

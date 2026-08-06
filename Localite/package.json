@@ -1,0 +1,29 @@
+{
+  "name": "localite",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hyper-local trust-based commerce — order from shops you already know",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "api": "npm run dev --workspace=@localite/api",
+    "api:seed": "npm run seed --workspace=@localite/api",
+    "mobile": "npm run start --workspace=@localite/mobile",
+    "dev": "npm run api",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "react": "19.1.0",
+    "react-native": "0.81.5"
+  },
+  "overrides": {
+    "react": "19.1.0",
+    "react-native": "0.81.5"
+  }
+}

@@ -1,0 +1,1183 @@
+{
+  "info": {
+    "name": "Localite API",
+    "description": "Full Localite API. Import localite.postman_environment.json and run Login first.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/health",
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register (Customer)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/register/password",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"phone\": \"7777777777\",\n  \"password\": \"Test@12345\",\n  \"role\": \"customer\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const j = pm.response.json();",
+                  "  if (j.accessToken) pm.environment.set('accessToken', j.accessToken);",
+                  "  if (j.refreshToken) pm.environment.set('refreshToken', j.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (Super Admin)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/login/password",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"{{superAdminPhone}}\",\n  \"password\": \"{{superAdminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const j = pm.response.json();",
+                  "  if (j.accessToken) pm.environment.set('accessToken', j.accessToken);",
+                  "  if (j.refreshToken) pm.environment.set('refreshToken', j.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (Shop Admin)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/login/password",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"{{shopAdminPhone}}\",\n  \"password\": \"{{shopAdminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const j = pm.response.json();",
+                  "  if (j.accessToken) pm.environment.set('accessToken', j.accessToken);",
+                  "  if (j.refreshToken) pm.environment.set('refreshToken', j.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (Customer)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/login/password",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"{{customerPhone}}\",\n  \"password\": \"{{customerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const j = pm.response.json();",
+                  "  if (j.accessToken) pm.environment.set('accessToken', j.accessToken);",
+                  "  if (j.refreshToken) pm.environment.set('refreshToken', j.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send OTP",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/send-otp",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{customerPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/verify-otp",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{customerPhone}}\",\n  \"otp\": \"{{devOtp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const j = pm.response.json();",
+                  "  if (j.accessToken) pm.environment.set('accessToken', j.accessToken);",
+                  "  if (j.refreshToken) pm.environment.set('refreshToken', j.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/refresh",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/logout",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/me",
+            "description": ""
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/profile",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"address\": \"123 Main St\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Onboard Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/onboard/customer",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Customer\",\n  \"address\": \"Home\",\n  \"areaId\": \"{{areaId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Onboard Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/onboard/admin",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Shop Owner\",\n  \"address\": \"Shop address\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Set Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/set-password",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"NewPass@123\",\n  \"currentPassword\": \"{{customerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Register Device",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/device/register",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expoPushToken\": \"ExponentPushToken[test]\",\n  \"platform\": \"android\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Unregister Device",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/device/unregister",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expoPushToken\": \"ExponentPushToken[test]\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Areas",
+      "item": [
+        {
+          "name": "List Areas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/areas",
+            "description": ""
+          }
+        },
+        {
+          "name": "Get Area",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/areas/{{areaId}}",
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Shops",
+      "item": [
+        {
+          "name": "List Shops by Area",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/shops/area/{{areaId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "Get Shop",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/shops/{{shopId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "Apply for Shop",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/shops/apply",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Store\",\n  \"category\": \"Grocery\",\n  \"address\": \"Main Rd\",\n  \"phone\": \"9999999999\",\n  \"areaId\": \"{{areaId}}\",\n  \"itemTypes\": \"Grocery\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "My Invitations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/shops/my/invitations",
+            "description": ""
+          }
+        },
+        {
+          "name": "Complete Registration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/shops/{{shopId}}/complete-registration",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Store Name\",\n  \"category\": \"Grocery\",\n  \"address\": \"Addr\",\n  \"phone\": \"9999999999\",\n  \"areaId\": \"{{areaId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "My Applications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/shops/my/application",
+            "description": ""
+          }
+        },
+        {
+          "name": "Update My Shop",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/shops/my/{{shopId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9999999999\",\n  \"address\": \"New addr\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "Submit Order (text)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/orders/submit-flexible-order",
+            "description": "Add image file field for photo orders",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "shopId",
+                  "value": "{{shopId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "textPayload",
+                  "value": "2kg rice, 1L oil",
+                  "type": "text"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "My Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/orders/my",
+            "description": ""
+          }
+        },
+        {
+          "name": "Shop Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/orders/shop/{{shopId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "Get Order",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/orders/{{orderId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "Accept Order",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/orders/transition/accept/{{orderId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"finalBillAmount\": 450,\n  \"deliveryTimeWindow\": \"Today 6-8 PM\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Select Payment (COD)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/orders/transition/select-payment/{{orderId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentMethod\": \"Cash_On_Delivery\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Select Payment (UPI)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/orders/transition/select-payment/{{orderId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentMethod\": \"UPI_Instant\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Create Razorpay Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/orders/transition/create-razorpay-order/{{orderId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "Verify Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/orders/transition/verify-payment/{{orderId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"razorpayOrderId\": \"order_x\",\n  \"razorpayPaymentId\": \"pay_x\",\n  \"razorpaySignature\": \"sig_x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Mock Pay (dev)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/orders/transition/pay/{{orderId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "Ship Order",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/orders/transition/ship/{{orderId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "Deliver Order",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/orders/transition/deliver/{{orderId}}",
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Pending Shops",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/shops/pending",
+            "description": ""
+          }
+        },
+        {
+          "name": "Approve Shop",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/shops/{{shopId}}/approve",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rank\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Reject Shop",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/shops/{{shopId}}/reject",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rejectionReason\": \"Not approved\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "All Shops",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/shops",
+            "description": ""
+          }
+        },
+        {
+          "name": "Invite Shop",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/shops/invite",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shopCode\": \"LCT-TEST01\",\n  \"ownerPhone\": \"9999999999\",\n  \"areaId\": \"{{areaId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Create Shop (direct)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/shops",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shopCode\": \"LCT-DIR01\",\n  \"name\": \"Quick Mart\",\n  \"category\": \"Grocery\",\n  \"address\": \"Road\",\n  \"phone\": \"9876543210\",\n  \"areaId\": \"{{areaId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Enable Shop",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/shops/{{shopId}}/operational-status",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"operationalStatus\": \"enabled\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Disable Shop",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/shops/{{shopId}}/operational-status",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"operationalStatus\": \"disabled\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "On Hold Shop",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/shops/{{shopId}}/operational-status",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"operationalStatus\": \"on_hold\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete Shop",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/shops/{{shopId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "Create Area",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/areas",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pimple Saudagar\",\n  \"city\": \"Pune (PCMC)\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/users",
+            "description": ""
+          }
+        },
+        {
+          "name": "Change User Role",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/users/{{userId}}/role",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Support",
+      "item": [
+        {
+          "name": "Create Ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/support/create-ticket",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"issueType\": \"Wrong_Item\",\n  \"customerMessage\": \"Wrong item received\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "My Tickets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/support/my",
+            "description": ""
+          }
+        },
+        {
+          "name": "Shop Active Tickets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/support/merchant/active/{{shopId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "Update Ticket",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/support/update-ticket/{{ticketId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticketStatus\": \"Acknowledged\",\n  \"shopkeeperResolution\": \"Looking into it\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Webhooks",
+      "item": [
+        {
+          "name": "Razorpay Webhook",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/webhooks/razorpay",
+            "description": "Requires x-razorpay-signature header",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"payment.captured\",\n  \"payload\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "Localite",
+    "slug": "localite",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#1a7f4b"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1a7f4b"
+      }
+    },
+    "extra": {
+      "apiUrl": "http://192.168.29.170:5000"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-asset"
+    ],
+    "experiments": {
+      "autolinkingModuleResolution": true
+    }
+  }
+}
