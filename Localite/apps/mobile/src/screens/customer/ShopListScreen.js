@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { api, PAGE_LIMIT } from '../../services/api';
+import { shopHasVisualCatalog } from '@localite/shared';
 import ScreenLayout from '../../components/ScreenLayout';
 
 const CATEGORY_COLORS = {
@@ -16,6 +17,8 @@ const CATEGORY_COLORS = {
   Vegetables: '#22c55e',
   Grocery: '#8b5cf6',
   Bakery: '#f97316',
+  Flowers: '#db2777',
+  Nursery: '#15803d',
 };
 
 export default function ShopListScreen({ navigation }) {
@@ -90,12 +93,22 @@ export default function ShopListScreen({ navigation }) {
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.card}
-            onPress={() => navigation.navigate('PlaceOrder', { shop: item })}
+            onPress={() => navigation.navigate(
+              shopHasVisualCatalog(item) ? 'CatalogOrder' : 'PlaceOrder',
+              { shop: item },
+            )}
           >
             <View style={[styles.badge, { backgroundColor: CATEGORY_COLORS[item.category] || '#999' }]}>
               <Text style={styles.badgeText}>{item.category}</Text>
             </View>
             <Text style={styles.shopName}>{item.name}</Text>
+            {shopHasVisualCatalog(item) ? (
+              <Text style={styles.catalogHint}>
+                {item.catalogItemCount
+                  ? `${item.catalogItemCount} products with prices`
+                  : 'Visual catalog · tap to browse'}
+              </Text>
+            ) : null}
             <Text style={styles.owner}>{item.ownerName}</Text>
             <Text style={styles.address}>{item.address}</Text>
           </TouchableOpacity>
@@ -123,6 +136,7 @@ const styles = StyleSheet.create({
   badge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, marginBottom: 8 },
   badgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
   shopName: { fontSize: 18, fontWeight: '700', color: '#111' },
+  catalogHint: { fontSize: 12, color: '#1a7f4b', fontWeight: '600', marginTop: 4 },
   owner: { fontSize: 13, color: '#555', marginTop: 4 },
   address: { fontSize: 12, color: '#888', marginTop: 4 },
   empty: { textAlign: 'center', color: '#999', marginTop: 40 },

@@ -6,6 +6,7 @@ import Order from './Order.js';
 import OrderEvent from './OrderEvent.js';
 import SupportTicket from './SupportTicket.js';
 import SupportTicketMessage from './SupportTicketMessage.js';
+import ShopCatalogItem from './ShopCatalogItem.js';
 import OtpSession from './OtpSession.js';
 import RefreshToken from './RefreshToken.js';
 import UserDevice from './UserDevice.js';
@@ -35,6 +36,11 @@ User.hasMany(Order, { foreignKey: 'customerId', as: 'orders' });
 Order.belongsTo(User, { foreignKey: 'customerId', as: 'customer' });
 Shop.hasMany(Order, { foreignKey: 'shopId', as: 'orders' });
 Order.belongsTo(Shop, { foreignKey: 'shopId', as: 'shop' });
+Order.belongsTo(Order, { foreignKey: 'parentOrderId', as: 'parentOrder' });
+Order.hasMany(Order, { foreignKey: 'parentOrderId', as: 'backorderOrders' });
+
+Shop.hasMany(ShopCatalogItem, { foreignKey: 'shopId', as: 'catalogItems' });
+ShopCatalogItem.belongsTo(Shop, { foreignKey: 'shopId', as: 'shop' });
 
 // Order events
 Order.hasMany(OrderEvent, { foreignKey: 'orderId', as: 'events' });
@@ -70,6 +76,7 @@ export {
   Shop,
   User,
   ShopUser,
+  ShopCatalogItem,
   Order,
   OrderEvent,
   SupportTicket,

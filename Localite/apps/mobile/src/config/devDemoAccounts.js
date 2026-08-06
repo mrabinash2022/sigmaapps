@@ -38,5 +38,7 @@ export const DEV_SEEDED_SHOP_OWNERS = {
     { phone: '9876500008', shop: 'Sahyadri Kirana' },
     { phone: '9876500009', shop: 'Oven Fresh Bakery' },
     { phone: '9876500010', shop: 'City Bakery & Confectionery' },
+    { phone: '9876500011', shop: 'Pooja & Flowers Corner', note: 'Flowers & pooja catalog' },
+    { phone: '9876500012', shop: 'Green Roots Nursery', note: 'Plants & garden catalog' },
   ],
 };

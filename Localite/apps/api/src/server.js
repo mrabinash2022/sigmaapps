@@ -17,6 +17,8 @@ import supportRoutes from './routes/supportRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import webhookRoutes from './routes/webhookRoutes.js';
 import { migrateShopCodes } from './services/shopService.js';
+import { migrateCatalogSchema } from './services/catalogSchemaMigration.js';
+import { migrateOrderSchema } from './services/orderSchemaMigration.js';
 import { migrateSupportSchema } from './services/supportSchemaMigration.js';
 import { migrateUserProfileSchema } from './services/userSchemaMigration.js';
 import { getStorageInfo } from './services/storageService.js';
@@ -77,6 +79,8 @@ async function start() {
     try {
       await migrateSupportSchema();
       await migrateUserProfileSchema();
+      await migrateOrderSchema();
+      await migrateCatalogSchema();
       console.log('Schema migrations applied');
     } catch (migErr) {
       console.warn('Schema migration warning:', migErr.message);

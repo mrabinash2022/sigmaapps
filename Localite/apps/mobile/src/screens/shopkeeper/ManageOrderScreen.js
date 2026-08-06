@@ -11,11 +11,21 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../../services/api';
-import { OrderStatus, PaymentMethod, PaymentStatus } from '@localite/shared';
+import { OrderStatus, PaymentMethod, PaymentStatus, formatOrderItemsSummary, getCatalogEstimatedTotal, parseCatalogPayload } from '@localite/shared';
 import ScreenLayout from '../../components/ScreenLayout';
 import { OrderSupportButton } from '../../components/OrderSupportButton';
+import CatalogOrderItems from '../../components/CatalogOrderItems';
+import OrderFulfillmentPanel from '../../components/OrderFulfillmentPanel';
+import FulfillmentSummary from '../../components/FulfillmentSummary';
 
 const TIME_SLOTS = ['Within 1 hour', '2–4 PM', '4–6 PM', '6–8 PM'];
+
+const REJECTION_REASONS = [
+  'Store is closed',
+  'Technical / system issues',
+  'Unable to source items',
+  'Staff unavailable',
+];
 
 const PAYMENT_METHOD_LABELS = {
   [PaymentMethod.UPI_INSTANT]: 'UPI / Payment gateway',
@@ -27,6 +37,8 @@ const PAYMENT_STATUS_LABELS = {
   [PaymentStatus.PAID]: 'Paid',
   [PaymentStatus.FAILED]: 'Payment failed',
   [PaymentStatus.NOT_REQUIRED]: 'Pay on delivery',
+  [PaymentStatus.REFUND_PENDING]: 'Refund pending',
+  [PaymentStatus.REFUNDED]: 'Refunded',
 };
 
 const PAYMENT_STATUS_COLORS = {
@@ -34,6 +46,8 @@ const PAYMENT_STATUS_COLORS = {
   [PaymentStatus.PAID]: '#22c55e',
   [PaymentStatus.FAILED]: '#ef4444',
   [PaymentStatus.NOT_REQUIRED]: '#3b82f6',
+  [PaymentStatus.REFUND_PENDING]: '#dc2626',
+  [PaymentStatus.REFUNDED]: '#6b7280',
 };
 
 function canShipOrder(order) {
@@ -49,14 +63,20 @@ export default function ManageOrderScreen({ route, navigation }) {
   const [order, setOrder] = useState(null);
   const [amount, setAmount] = useState('');
   const [timeSlot, setTimeSlot] = useState(TIME_SLOTS[1]);
+  const [rejectReason, setRejectReason] = useState(REJECTION_REASONS[0]);
+  const [customRejectReason, setCustomRejectReason] = useState('');
   const [loading, setLoading] = useState(true);
+  const [fulfillmentData, setFulfillmentData] = useState(null);
 
   const load = () => {
     setLoading(true);
     api.getOrder(orderId)
       .then(({ order: o }) => {
         setOrder(o);
-        if (o.finalBillAmount) setAmount(String(o.finalBillAmount));
+        const catalog = parseCatalogPayload(o);
+        const estimate = getCatalogEstimatedTotal(catalog);
+        if (estimate != null && !o.finalBillAmount) setAmount(String(estimate));
+        else if (o.finalBillAmount) setAmount(String(o.finalBillAmount));
         if (o.deliveryTimeWindow) setTimeSlot(o.deliveryTimeWindow);
       })
       .catch(console.error)
@@ -70,14 +90,55 @@ export default function ManageOrderScreen({ route, navigation }) {
       Alert.alert('Error', 'Enter a valid amount');
       return;
     }
+    if (fulfillmentData?.hasUnavailable && !fulfillmentData?.shopNote?.trim()) {
+      const missingReason = fulfillmentData.lines?.some(
+        (l) => (l.status === 'unavailable' || l.status === 'partial') && !l.unavailableReason,
+      );
+      if (missingReason) {
+        Alert.alert('Reason required', 'Add a note or select a reason for unavailable items.');
+        return;
+      }
+    }
     try {
-      const { order: updated } = await api.acceptOrder(orderId, Number(amount), timeSlot);
+      const { order: updated } = await api.acceptOrder(
+        orderId,
+        Number(amount),
+        timeSlot,
+        fulfillmentData?.hasUnavailable
+          ? { lines: fulfillmentData.lines, shopNote: fulfillmentData.shopNote }
+          : undefined,
+        fulfillmentData?.createBackorder,
+      );
       setOrder(updated);
-      Alert.alert('Accepted', 'Customer will be notified to choose payment');
+      const msg = fulfillmentData?.hasUnavailable
+        ? 'Customer notified about unavailable items'
+        : 'Customer will be notified to choose payment';
+      Alert.alert('Accepted', msg);
     } catch (err) {
       Alert.alert('Error', err.message);
     }
   };
+
+  const activateBackorder = async () => {
+    if (!amount || Number(amount) <= 0) {
+      Alert.alert('Error', 'Enter a valid amount');
+      return;
+    }
+    try {
+      const { order: updated } = await api.markBackorderReady(orderId, Number(amount), timeSlot);
+      setOrder(updated);
+      Alert.alert('Backorder activated', 'Customer notified to choose payment.');
+    } catch (err) {
+      Alert.alert('Error', err.message);
+    }
+  };
+
+  const handleFulfillmentChange = useCallback((data) => {
+    setFulfillmentData(data);
+    if (data.suggestedAmount != null) {
+      setAmount(String(Math.round(data.suggestedAmount * 100) / 100));
+    }
+  }, []);
 
   const ship = async () => {
     try {
@@ -86,6 +147,38 @@ export default function ManageOrderScreen({ route, navigation }) {
     } catch (err) {
       Alert.alert('Error', err.message);
     }
+  };
+
+  const reject = () => {
+    const reason = rejectReason === 'Other'
+      ? customRejectReason.trim()
+      : rejectReason;
+
+    if (!reason || reason.length < 3) {
+      Alert.alert('Reason required', 'Please select or enter a rejection reason.');
+      return;
+    }
+
+    Alert.alert(
+      'Reject order?',
+      'The customer will be notified immediately that you cannot fulfill this order.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reject',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { order: updated } = await api.rejectOrder(orderId, reason);
+              setOrder(updated);
+              Alert.alert('Order rejected', 'The customer has been notified.');
+            } catch (err) {
+              Alert.alert('Error', err.message);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const deliver = async () => {
@@ -97,6 +190,28 @@ export default function ManageOrderScreen({ route, navigation }) {
     }
   };
 
+  const processRefund = () => {
+    Alert.alert(
+      'Process refund?',
+      `Refund ₹${Number(order.finalBillAmount || 0).toFixed(2)} to ${order.customer?.name}? The customer will be notified.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Refund',
+          onPress: async () => {
+            try {
+              const { order: updated } = await api.refundOrder(orderId);
+              setOrder(updated);
+              Alert.alert('Refund processed', 'The customer has been notified.');
+            } catch (err) {
+              Alert.alert('Refund failed', err.message);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   if (loading || !order) {
     return (
       <ScreenLayout>
@@ -105,7 +220,8 @@ export default function ManageOrderScreen({ route, navigation }) {
     );
   }
 
-  const showPayment = order.orderStatus !== OrderStatus.CREATED;
+  const showPayment = order.orderStatus !== OrderStatus.CREATED
+    && order.orderStatus !== OrderStatus.REJECTED;
   const paymentStatusColor = PAYMENT_STATUS_COLORS[order.paymentStatus] || '#999';
   const readyToShip = canShipOrder(order);
 
@@ -124,7 +240,11 @@ export default function ManageOrderScreen({ route, navigation }) {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Order</Text>
-        <Text style={styles.body}>{order.textPayload || '(Image order — check uploads)'}</Text>
+        <CatalogOrderItems order={order} />
+        {!parseCatalogPayload(order) && !formatOrderItemsSummary(order) && (
+          <Text style={styles.body}>{order.textPayload || '(Image order — check uploads)'}</Text>
+        )}
+        <FulfillmentSummary order={order} onOpenBackorder={(id) => navigation.push('ManageOrder', { orderId: id })} />
       </View>
 
       {showPayment && (
@@ -165,6 +285,7 @@ export default function ManageOrderScreen({ route, navigation }) {
       {order.orderStatus === OrderStatus.CREATED && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Accept & set delivery</Text>
+          <OrderFulfillmentPanel order={order} onChange={handleFulfillmentChange} />
           <TextInput
             style={styles.input}
             placeholder="Total amount (₹)"
@@ -185,6 +306,74 @@ export default function ManageOrderScreen({ route, navigation }) {
           <TouchableOpacity style={styles.btn} onPress={accept}>
             <Text style={styles.btnText}>Accept Order</Text>
           </TouchableOpacity>
+
+          <View style={styles.rejectDivider} />
+          <Text style={styles.sectionTitle}>Cannot fulfill?</Text>
+          <Text style={styles.rejectHint}>
+            Reject if the store is closed or facing issues. The customer is notified immediately.
+          </Text>
+          <Text style={styles.label}>Reason</Text>
+          {[...REJECTION_REASONS, 'Other'].map((reason) => (
+            <TouchableOpacity
+              key={reason}
+              style={[styles.slotBtn, rejectReason === reason && styles.rejectSlotActive]}
+              onPress={() => setRejectReason(reason)}
+            >
+              <Text style={rejectReason === reason ? styles.rejectSlotTextActive : styles.slotText}>
+                {reason}
+              </Text>
+            </TouchableOpacity>
+          ))}
+          {rejectReason === 'Other' && (
+            <TextInput
+              style={styles.input}
+              placeholder="Describe the issue"
+              value={customRejectReason}
+              onChangeText={setCustomRejectReason}
+              multiline
+            />
+          )}
+          <TouchableOpacity style={styles.rejectBtn} onPress={reject}>
+            <Text style={styles.btnText}>Reject Order</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {order.orderStatus === OrderStatus.BACKORDER_WAITING && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Backorder — items now available?</Text>
+          <Text style={styles.rejectHint}>
+            When stock arrives, set the amount and delivery window. The customer will be notified to pay.
+          </Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Total amount (₹)"
+            keyboardType="numeric"
+            value={amount}
+            onChangeText={setAmount}
+          />
+          <Text style={styles.label}>Delivery window</Text>
+          {TIME_SLOTS.map((slot) => (
+            <TouchableOpacity
+              key={slot}
+              style={[styles.slotBtn, timeSlot === slot && styles.slotActive]}
+              onPress={() => setTimeSlot(slot)}
+            >
+              <Text style={timeSlot === slot ? styles.slotTextActive : styles.slotText}>{slot}</Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity style={styles.btn} onPress={activateBackorder}>
+            <Text style={styles.btnText}>Activate backorder & notify customer</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {order.orderStatus === OrderStatus.REJECTED && (
+        <View style={[styles.section, styles.rejectedBox]}>
+          <Text style={styles.sectionTitle}>Order rejected</Text>
+          <Text style={styles.body}>
+            {order.rejectionReason || 'This order was rejected and the customer was notified.'}
+          </Text>
         </View>
       )}
 
@@ -207,6 +396,30 @@ export default function ManageOrderScreen({ route, navigation }) {
         <TouchableOpacity style={styles.btn} onPress={deliver}>
           <Text style={styles.btnText}>Mark as Delivered</Text>
         </TouchableOpacity>
+      )}
+
+      {order.orderStatus === OrderStatus.RETURNED && (
+        <View style={[styles.section, styles.returnedBox]}>
+          <Text style={styles.sectionTitle}>Order returned</Text>
+          <Text style={styles.body}>
+            {order.returnReason || 'Customer returned this order.'}
+          </Text>
+          {order.paymentStatus === PaymentStatus.REFUND_PENDING && (
+            <>
+              <Text style={styles.paymentHint}>
+                Payment was collected — refund ₹{Number(order.finalBillAmount || 0).toFixed(2)} to the customer.
+              </Text>
+              <TouchableOpacity style={styles.refundBtn} onPress={processRefund}>
+                <Text style={styles.btnText}>Process refund to customer</Text>
+              </TouchableOpacity>
+            </>
+          )}
+          {order.paymentStatus === PaymentStatus.REFUNDED && (
+            <Text style={styles.refundDone}>
+              Refund completed{order.razorpayRefundId ? ` (${order.razorpayRefundId})` : ''}.
+            </Text>
+          )}
+        </View>
       )}
       </ScrollView>
     </ScreenLayout>
@@ -237,4 +450,13 @@ const styles = StyleSheet.create({
   slotTextActive: { color: '#1a7f4b', fontWeight: '700' },
   btn: { backgroundColor: '#1a7f4b', padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 8 },
   btnText: { color: '#fff', fontWeight: '700' },
+  rejectDivider: { height: 1, backgroundColor: '#eee', marginVertical: 20 },
+  rejectHint: { fontSize: 13, color: '#666', marginBottom: 10, lineHeight: 18 },
+  rejectSlotActive: { borderColor: '#ef4444', backgroundColor: '#fef2f2' },
+  rejectSlotTextActive: { color: '#ef4444', fontWeight: '700' },
+  rejectBtn: { backgroundColor: '#ef4444', padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 8 },
+  rejectedBox: { borderColor: '#fecaca', backgroundColor: '#fef2f2' },
+  returnedBox: { borderColor: '#fecaca', backgroundColor: '#fff7ed' },
+  refundBtn: { backgroundColor: '#dc2626', padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 12 },
+  refundDone: { fontSize: 14, color: '#166534', fontWeight: '600', marginTop: 10 },
 });

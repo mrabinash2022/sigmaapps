@@ -50,3 +50,22 @@ export function verifyWebhookSignature(rawBody, signature) {
   const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
   return expected === signature;
 }
+
+export async function refundPayment({ paymentId, amount, orderId }) {
+  const rzp = getRazorpay();
+  if (!rzp) {
+    throw Object.assign(new Error('Razorpay not configured'), { statusCode: 503 });
+  }
+  if (!paymentId) {
+    throw Object.assign(new Error('No Razorpay payment ID on this order'), { statusCode: 400 });
+  }
+
+  const payload = {
+    notes: { localiteOrderId: orderId },
+  };
+  if (amount != null) {
+    payload.amount = Math.round(Number(amount) * 100);
+  }
+
+  return rzp.payments.refund(paymentId, payload);
+}

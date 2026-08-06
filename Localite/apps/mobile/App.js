@@ -11,12 +11,16 @@ import LoginScreen from './src/screens/LoginScreen';
 import CustomerOnboardingScreen from './src/screens/onboarding/CustomerOnboardingScreen';
 import AdminOnboardingScreen from './src/screens/onboarding/AdminOnboardingScreen';
 import ShopListScreen from './src/screens/customer/ShopListScreen';
+import CatalogOrderScreen from './src/screens/customer/CatalogOrderScreen';
 import PlaceOrderScreen from './src/screens/customer/PlaceOrderScreen';
 import MyOrdersScreen from './src/screens/customer/MyOrdersScreen';
 import OrderDetailScreen from './src/screens/customer/OrderDetailScreen';
+import ReorderConfirmScreen from './src/screens/customer/ReorderConfirmScreen';
 import ShopInboxScreen from './src/screens/shopkeeper/ShopInboxScreen';
 import CompleteInvitationScreen from './src/screens/shopkeeper/CompleteInvitationScreen';
 import ManageOrderScreen from './src/screens/shopkeeper/ManageOrderScreen';
+import ManageCatalogScreen from './src/screens/shopkeeper/ManageCatalogScreen';
+import EditCatalogItemScreen from './src/screens/shopkeeper/EditCatalogItemScreen';
 import SuperAdminDashboard from './src/screens/admin/SuperAdminDashboard';
 import ProfileScreen from './src/screens/profile/ProfileScreen';
 import ProfileOrdersScreen from './src/screens/profile/ProfileOrdersScreen';
@@ -84,20 +88,32 @@ function CustomerStack() {
   return (
     <Stack.Navigator screenOptions={headerOptions}>
       <Stack.Screen name="Home" component={CustomerTabs} options={{ headerShown: false }} />
+      <Stack.Screen name="CatalogOrder" component={CatalogOrderScreen} options={{ title: 'Browse & Order' }} />
       <Stack.Screen name="PlaceOrder" component={PlaceOrderScreen} options={{ title: 'Place Order' }} />
       <Stack.Screen name="OrderDetail" component={OrderDetailScreen} options={{ title: 'Order' }} />
+      <Stack.Screen name="ReorderConfirm" component={ReorderConfirmScreen} options={{ title: 'Reorder' }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
       <Stack.Screen name="ProfileOrders" component={ProfileOrdersScreen} options={{ title: 'Order History' }} />
     </Stack.Navigator>
   );
 }
 
+function AdminTabs() {
+  return (
+    <Tab.Navigator screenOptions={{ tabBarActiveTintColor: '#1a7f4b', ...headerOptions, headerRight: () => <LogoutButton /> }}>
+      <Tab.Screen name="Inbox" component={ShopInboxScreen} options={{ title: 'Order Queue', tabBarLabel: 'Orders' }} />
+      <Tab.Screen name="Products" component={ManageCatalogScreen} options={{ title: 'Products', tabBarLabel: 'Products' }} />
+    </Tab.Navigator>
+  );
+}
+
 function AdminStack() {
   return (
     <Stack.Navigator screenOptions={{ ...headerOptions, headerRight: () => <LogoutButton /> }}>
-      <Stack.Screen name="Inbox" component={ShopInboxScreen} options={{ title: 'Shop Dashboard' }} />
+      <Stack.Screen name="Home" component={AdminTabs} options={{ headerShown: false }} />
       <Stack.Screen name="CompleteInvitation" component={CompleteInvitationScreen} options={{ title: 'Register Shop' }} />
       <Stack.Screen name="ManageOrder" component={ManageOrderScreen} options={{ title: 'Manage Order' }} />
+      <Stack.Screen name="EditCatalogItem" component={EditCatalogItemScreen} options={{ title: 'Product' }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Shop Profile' }} />
       <Stack.Screen name="ProfileOrders" component={ProfileOrdersScreen} options={{ title: 'Orders Served' }} />
     </Stack.Navigator>

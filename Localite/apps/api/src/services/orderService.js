@@ -17,6 +17,14 @@ export async function getOrderWithDetails(orderId) {
         include: [{ association: 'actor', attributes: ['id', 'name', 'role'] }],
         order: [['createdAt', 'ASC']],
       },
+      {
+        association: 'backorderOrders',
+        attributes: ['id', 'orderStatus', 'finalBillAmount', 'deliveryTimeWindow', 'catalogPayload', 'createdAt'],
+      },
+      {
+        association: 'parentOrder',
+        attributes: ['id', 'orderStatus', 'finalBillAmount'],
+      },
     ],
   });
 }

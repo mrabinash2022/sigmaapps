@@ -25,6 +25,7 @@
 14. [Mobile App Navigation](#14-mobile-app-navigation)
 15. [External Integrations](#15-external-integrations)
 16. [Secrets & Configuration Management](#16-secrets--configuration-management)
+17. [Dev Tooling & Scripts](#17-dev-tooling--scripts)
 
 ---
 
@@ -36,7 +37,7 @@ Localite is **not** a warehouse marketplace (Blinkit/Instamart model). It is a *
 |-----------|----------------|----------------|
 | Inventory | Central warehouse | Shopkeeper sources locally |
 | Delivery | Own fleet / couriers | Shop's own staff |
-| Catalog (MVP) | Full product listing | Free-text list or photo of handwritten note |
+| Catalog (MVP) | Full product listing | Visual catalog (Flowers/Nursery) **or** free-text list / photo for other shops |
 | Pricing | Fixed at checkout | Shopkeeper confirms amount after accepting order |
 | Payment | Prepaid dominant | UPI (Razorpay) or Cash on Delivery |
 | Relationship | Anonymous | Known customer ↔ known shop |
@@ -58,7 +59,7 @@ flowchart LR
     subgraph External
         RZP[Razorpay]
         PUSH[Expo Push]
-        SMS[SMS Provider\nfuture]
+        SMS[SMS / Email\nTwilio + SMTP]
         CDN[Cloudinary\noptional]
     end
 
@@ -110,13 +111,18 @@ flowchart TB
 
     subgraph ServiceLayer["Service Layer"]
         S1[cryptoService\nbcrypt, OTP hash]
-        S2[tokenService\nJWT access + refresh]
+        S2[tokenService\nJWT + registration tokens]
         S3[otpService\nOTP sessions]
         S4[orderStateMachine\nstatus transitions]
         S5[orderService\nevents + details]
         S6[storageService\nlocal / cloudinary]
         S7[notificationService\nExpo push]
         S8[razorpayService\nUPI payments]
+        S9[captchaService\nmath + reCAPTCHA]
+        S10[userService\nidentity normalization]
+        S11[shopService\ncodes, invites, listings]
+        S12[messagingService\nSMS + email]
+        S13[supportSchemaMigration\nuserSchemaMigration]
     end
 
     subgraph DataLayer["Data Layer"]
@@ -146,15 +152,19 @@ flowchart TB
 Localite/
 ├── apps/
 │   ├── api/                        # Backend REST API
+│   │   ├── scripts/
+│   │   │   ├── run-migrations.js   # run schema patches without full boot
+│   │   │   └── sync-demo-data.js   # upsert demo users + shop owners
 │   │   ├── src/
 │   │   │   ├── config/
 │   │   │   │   └── loadEnv.js      # loads .env + dev.local
-│   │   │   ├── server.js           # Express bootstrap
+│   │   │   ├── server.js           # Express bootstrap + boot migrations
 │   │   │   ├── database.js         # Sequelize connection
 │   │   │   ├── models/             # ORM models + associations
 │   │   │   ├── routes/             # HTTP route handlers
 │   │   │   ├── middleware/         # auth, rate limit, errors
-│   │   │   ├── services/           # business logic
+│   │   │   ├── services/           # business logic + schema migrations
+│   │   │   ├── utils/pagination.js # shared paginated responses
 │   │   │   └── seeders/seed.js     # demo data
 │   │   ├── uploads/                # local file storage
 │   │   ├── .env.example            # ✅ committed — non-secret defaults
@@ -164,21 +174,31 @@ Localite/
 │   └── mobile/                     # Expo React Native app
 │       ├── App.js                  # root navigator + role routing
 │       └── src/
+│           ├── components/         # ProfileBar, ScreenLayout, OrderSupportButton
+│           ├── config/devDemoAccounts.js  # dev quick-fill logins (__DEV__)
 │           ├── context/AuthContext.js
 │           ├── services/api.js     # HTTP client + token refresh
+│           ├── utils/profile.js    # resolveMediaUrl, getPrimaryShop
 │           └── screens/
 │               ├── LoginScreen.js
 │               ├── customer/       # shop browse, orders
-│               ├── shopkeeper/       # inbox, manage orders
-│               ├── admin/            # super admin approvals
-│               └── onboarding/     # customer + admin setup
+│               ├── shopkeeper/       # inbox, manage orders, invitations
+│               ├── admin/            # super admin dashboard (shops + users)
+│               ├── profile/          # ProfileScreen, ProfileOrdersScreen
+│               └── onboarding/       # customer + admin setup
 │
 ├── packages/
 │   └── shared/                     # shared enums & constants
-│       └── src/enums.js
+│       └── src/
+│           ├── enums.js
+│           └── shopUtils.js        # isShopPubliclyListed, isShopOrderable
 │
 ├── docs/
-│   └── architecture.md             # this file
+│   ├── architecture.md             # this file
+│   ├── database.md                 # how to apply schema + seed
+│   ├── app.sql                     # canonical PostgreSQL schema (v0.4)
+│   ├── seed-data.sql               # demo data with fixed UUIDs
+│   └── apicurl/                    # curl docs + Postman collection
 │
 ├── .gitignore                      # blocks dev.local, .env, secrets/
 └── docker-compose.yml              # PostgreSQL container
@@ -212,9 +232,8 @@ flowchart TD
         OTP4 --> OTP5{OTP valid?}
         OTP5 -->|No| OTP_ERR[401 / 429\nincrement attempts]
         OTP5 -->|Yes| OTP6{User exists?}
-        OTP6 -->|No| OTP7[Auto-create customer user]
+        OTP6 -->|No| OTP_REG[403 REGISTRATION_REQUIRED\nuse Password tab to register]
         OTP6 -->|Yes| TOKENS
-        OTP7 --> TOKENS
     end
 
     subgraph TOKENS["Token Issuance"]
@@ -229,7 +248,9 @@ flowchart TD
     ONBOARD -->|Yes| ROLE_ROUTE[Route by role]
 ```
 
-### 4.2 Registration (Password)
+### 4.2 Registration (Password + Email Verification)
+
+Registration is a **three-step** flow. Self-registration as `super_admin` is not allowed.
 
 ```mermaid
 sequenceDiagram
@@ -238,11 +259,23 @@ sequenceDiagram
     participant A as API
     participant DB as PostgreSQL
 
-    U->>M: Register (name, phone, password, role)
-    M->>A: POST /api/auth/register/password
+    U->>M: Open register (Password tab)
+    M->>A: GET /api/auth/captcha
+    A-->>M: captchaId + math challenge
+    U->>M: Enter email + solve captcha
+    M->>A: POST /api/auth/register/send-email-code
+    A->>DB: Create OtpSession (channel=email, purpose=register)
+    A-->>M: OTP sent (dev: console / DEV_OTP)
+
+    U->>M: Enter email OTP
+    M->>A: POST /api/auth/register/verify-email-code
+    A-->>M: registrationToken (short-lived JWT)
+
+    U->>M: Enter name, phone, password, role (customer|admin)
+    M->>A: POST /api/auth/register/password\n+ registrationToken + captcha
     A->>A: validatePassword (8+ chars, upper/lower/number)
     A->>A: bcrypt hash (12 rounds)
-    A->>DB: Create User (role: customer | admin)
+    A->>DB: Create User (emailVerifiedAt set)
     A->>DB: Create RefreshToken
     A-->>M: accessToken + refreshToken + user
     M->>M: Save to SecureStore
@@ -276,21 +309,22 @@ sequenceDiagram
 | OTP storage | bcrypt-hashed, never stored in plaintext |
 | OTP expiry | 5 minutes (`OTP_TTL_MS`) |
 | OTP brute-force | Max 5 attempts per session, then invalidated |
-| Rate limiting | 30 req/15 min on auth routes; 3 OTP sends/min per phone |
+| Rate limiting | `authLimiter` on login/register/OTP only — 30 req/15 min (prod), 500 (dev); `otpLimiter` 3/min per phone (prod), 100 (dev); set `DISABLE_AUTH_RATE_LIMIT=true` in dev to skip |
+| Account status | `accountStatus` (`enabled` / `disabled` / `on_hold`) checked at login and on every JWT request; disabled accounts have refresh tokens revoked |
 | Access tokens | JWT, 15 min expiry, signed with `JWT_SECRET` |
 | Refresh tokens | Opaque 48-byte hex, SHA-256 hash in DB, rotation on use |
 | HTTP headers | Helmet (CSP, XSS, etc.) |
 | Authorization | Role middleware on every protected route |
 | Shop scoping | `ShopUser` junction table — admin can only access linked shops |
 | Payment verification | Razorpay HMAC signature on client callback + webhook |
-| File uploads | 5 MB limit, image MIME validation, multer |
+| File uploads | 3 MB profile / 5 MB order, image MIME validation, multer |
 | Secrets management | Passwords & API keys in `dev.local` only — **never committed to git** |
 
 ```mermaid
 flowchart LR
     REQ[Incoming Request] --> HELMET[Helmet]
     HELMET --> CORS[CORS]
-    CORS --> RATE[Rate Limiter\nauth routes only]
+    CORS --> RATE[Rate Limiter\nlogin/register/OTP only]
     RATE --> AUTH{Bearer token?}
     AUTH -->|No| REJECT401[401]
     AUTH -->|Yes| VERIFY[JWT verify\n+ load user from DB]
@@ -340,7 +374,8 @@ flowchart TD
 | Approve shop | ✅ | ❌ | ❌ |
 | Manage areas | ✅ | ❌ | ❌ |
 | Manage users | ✅ | ❌ | ❌ |
-| Support tickets (create) | ❌ | ❌ | ✅ |
+| Support tickets (create) | ❌ | ✅ (own shop orders) | ✅ |
+| Support tickets (reply) | ✅ | ✅ (own shop) | ✅ (own orders) |
 | Support tickets (resolve) | ✅ | ✅ (own shop) | ❌ |
 | Onboarding | N/A (seed) | ✅ | ✅ |
 
@@ -363,10 +398,10 @@ flowchart TD
 ```mermaid
 flowchart TB
     subgraph MOD_AUTH["🔐 Auth Module"]
-        A1[Password register/login]
+        A1[Password register/login\nemail verify + captcha]
         A2[OTP send/verify]
         A3[Token refresh/logout]
-        A4[Profile management]
+        A4[Profile management\n+ picture upload]
         A5[Device registration]
     end
 
@@ -400,9 +435,17 @@ flowchart TB
     end
 
     subgraph MOD_SUPPORT["🎫 Support Module"]
-        S1[Create ticket]
-        S2[Delivery instructions]
-        S3[Complaint tracking\nOpen → Acknowledged → Resolved]
+        S1[Create ticket\nany role on accessible order]
+        S2[Threaded messages\nSupportTicketMessages]
+        S3[Per-order ticket list\nGET /support/order/:orderId]
+        S4[Complaint tracking\nOpen → Acknowledged → Resolved]
+    end
+
+    subgraph MOD_PROFILE["👤 Profile Module"]
+        PR1[ProfileBar on all main screens]
+        PR2[ProfileScreen — edit details + photo]
+        PR3[ProfileOrdersScreen — placed / served]
+        PR4[POST /auth/profile/picture upload]
     end
 
     subgraph MOD_NOTIFY["🔔 Notification Module"]
@@ -424,6 +467,7 @@ flowchart TB
     MOD_ORDER --> MOD_PAY
     MOD_ORDER --> MOD_SUPPORT
     MOD_ORDER --> MOD_NOTIFY
+    MOD_ORDER --> MOD_PROFILE
     MOD_ONBOARD --> MOD_ADMIN
 ```
 
@@ -456,6 +500,8 @@ erDiagram
         enum role
         boolean is_onboarded
         datetime phone_verified_at
+        datetime email_verified_at
+        enum account_status
         boolean is_active
         datetime last_login_at
         string profile_picture_url
@@ -463,17 +509,22 @@ erDiagram
 
     Shop {
         uuid id PK
+        string shop_code UK
         string name
         enum category
         string owner_name
         string phone
         text address
+        decimal latitude
+        decimal longitude
         text item_types
         text description
         string logo_url
         int rank
         enum status
+        enum operational_status
         boolean is_verified
+        string invited_owner_phone
         uuid area_id FK
         uuid applied_by_id FK
         uuid approved_by_id FK
@@ -519,15 +570,28 @@ erDiagram
         uuid order_id FK
         uuid shop_id FK
         uuid customer_id FK
+        uuid raised_by_id FK
+        enum raised_by_role
         enum issue_type
         text customer_message
         text shopkeeper_resolution
         enum ticket_status
     }
 
+    SupportTicketMessage {
+        uuid id PK
+        uuid ticket_id FK
+        uuid sender_id FK
+        enum sender_role
+        text body
+        datetime created_at
+    }
+
     OtpSession {
         uuid id PK
-        string phone
+        string target
+        enum channel
+        enum purpose
         string otp_hash
         datetime expires_at
         int attempts
@@ -563,6 +627,9 @@ erDiagram
     Order ||--o{ SupportTicket : "has"
     Shop ||--o{ SupportTicket : "handles"
     User ||--o{ SupportTicket : "creates"
+    User ||--o{ SupportTicket : "raised_by"
+    SupportTicket ||--o{ SupportTicketMessage : "thread"
+    User ||--o{ SupportTicketMessage : "sends"
     User ||--o{ RefreshToken : "sessions"
     User ||--o{ UserDevice : "push tokens"
     User ||--o{ Shop : "applies for"
@@ -574,14 +641,49 @@ erDiagram
 | Enum | Values |
 |------|--------|
 | `UserRole` | `super_admin`, `admin`, `customer` |
-| `ShopStatus` | `pending`, `approved`, `rejected` |
-| `ShopCategory` | `Sweets`, `Medicines`, `Vegetables`, `Bakery`, `Grocery` |
-| `OrderType` | `Text_List`, `Image_Scan` |
-| `OrderStatus` | `Created`, `Accepted`, `Shipped`, `Delivered` |
+| `UserAccountStatus` | `enabled`, `disabled`, `on_hold` |
+| `ShopStatus` | `invited`, `pending`, `approved`, `rejected` |
+| `ShopOperationalStatus` | `enabled`, `disabled`, `on_hold` |
+| `ShopCategory` | `Sweets`, `Medicines`, `Vegetables`, `Bakery`, `Grocery`, `Flowers`, `Nursery` |
+| `OrderType` | `Text_List`, `Image_Scan`, `Catalog` |
+
+**Visual catalog stores** (Flowers, Nursery, or any shop with `visual_catalog_enabled` and `ShopCatalogItems`): customers browse grouped product images with prices, and may combine catalog picks with a free-text list and/or photo upload on one order screen. Any shop category (Sweets, Grocery, Bakery, etc.) can opt in by setting the flag and adding catalog rows. Hybrid orders store `catalog_payload` (JSONB) plus optional `text_payload` / `image_payload_url`. API: `POST /api/orders/submit-catalog-order` (multipart).
+| `OrderStatus` | `Created`, `Accepted`, `Shipped`, `Delivered`, `Rejected`, `Returned` |
 | `PaymentMethod` | `UPI_Instant`, `Cash_On_Delivery` |
-| `PaymentStatus` | `Pending`, `Paid`, `Failed`, `Not_Required` |
+| `PaymentStatus` | `Pending`, `Paid`, `Failed`, `Not_Required`, `Refund_Pending`, `Refunded` |
 | `TicketIssueType` | `Delivery_Instruction`, `Wrong_Item`, `Damaged_Product`, `Delayed_Delivery`, `Other` |
 | `TicketStatus` | `Open`, `Acknowledged`, `Resolved` |
+| `SupportTicket.raised_by_role` | `customer`, `admin`, `super_admin` |
+| `SupportTicketMessage.sender_role` | `customer`, `admin`, `super_admin` |
+| `OtpSession.channel` | `sms`, `email` |
+| `OtpSession.purpose` | `login`, `register` |
+
+### 7.3 Schema Application & Boot Migrations
+
+Schema is kept in sync via three layers:
+
+1. **Sequelize models** — `sequelize.sync()` on API boot creates missing tables
+2. **Incremental migrations** — `migrateSupportSchema()` and `migrateUserProfileSchema()` patch columns that sync cannot alter safely
+3. **SQL reference** — [`docs/app.sql`](./app.sql) (v0.4 changelog) for manual `psql` apply
+
+```mermaid
+flowchart TD
+    BOOT[API start] --> AUTH[sequelize.authenticate]
+    AUTH --> OTP_FIX[Backfill OtpSessions\ntarget / channel columns]
+    OTP_FIX --> SYNC[sequelize.sync]
+    SYNC --> MIG1[migrateSupportSchema\nraised_by_* + SupportTicketMessages]
+    MIG1 --> MIG2[migrateUserProfileSchema\nprofile_picture_url]
+    MIG2 --> DATA[Boot data fixes:\nshop codes, accountStatus sync,\noperationalStatus for approved shops]
+    DATA --> READY[API listening]
+```
+
+Standalone migration runner (without full server):
+
+```bash
+node apps/api/scripts/run-migrations.js
+```
+
+See [`docs/database.md`](./database.md) for fresh-database setup and seed options.
 
 ---
 
@@ -594,6 +696,7 @@ stateDiagram-v2
     [*] --> Created : Customer submits\ntext list or photo
 
     Created --> Accepted : Admin accepts\n+ sets amount\n+ delivery window
+    Created --> Rejected : Admin rejects\n(store closed / issues)
 
     state Accepted {
         [*] --> AwaitingPayment
@@ -605,9 +708,24 @@ stateDiagram-v2
     Accepted --> Shipped : Admin dispatches\n(blocked until payment rules met)
 
     Shipped --> Delivered : Customer confirms\nOR Admin marks delivered
+    Shipped --> Returned : Customer returns\n(before/after receipt)
+    Delivered --> Returned : Customer returns
 
+    Rejected --> [*]
+    Returned --> [*]
     Delivered --> [*]
 ```
+
+### 8.3 Partial fulfillment & backorders
+
+When a shopkeeper accepts an order but some items are unavailable:
+
+1. **Accept with fulfillment** — `PATCH /transition/accept/:id` accepts a `fulfillment` payload with per-line availability (`fulfilled`, `partial`, `unavailable`), a shop note, and adjusted `finalBillAmount`.
+2. **Customer notification** — Customer receives a push explaining unavailable items and the revised bill.
+3. **Optional backorder** — If `createBackorder: true`, a child order is created with `parent_order_id` pointing to the original, `order_status = Backorder_Waiting`, and `catalog_payload` containing only missing items.
+4. **Backorder activation** — When stock arrives, the shop calls `PATCH /transition/backorder-ready/:id` to move the backorder to `Accepted`; the customer is notified to choose payment and the normal delivery flow continues.
+
+`Orders.fulfillment_payload` (JSONB) stores line-level fulfillment details on the parent order. Child backorders link via `parent_order_id`.
 
 ### 8.2 Order Flow Sequence
 
@@ -736,6 +854,8 @@ flowchart TD
     SA_REVIEW -->|Approve| APPROVED[status = approved\nShopUser link created\nPush notification sent]
     SA_REVIEW -->|Reject| REJECTED[status = rejected\nreason stored]
     APPROVED --> ADMIN_APP[Admin Dashboard\norder inbox active]
+    INVITED[Super admin invites shop\nstatus = invited] --> COMPLETE[CompleteInvitationScreen\nowner completes registration]
+    COMPLETE --> APPROVED
 ```
 
 ### 10.3 Super Admin Shop Approval
@@ -801,6 +921,9 @@ flowchart LR
 | Event | Recipient | Message |
 |-------|-----------|---------|
 | Order Created | Shop admin(s) | "New order from {customer}" |
+| Order Rejected | Customer | "{shop} could not accept your order" + reason |
+| Order Returned | Customer + shop admin | Return recorded; refund required if paid |
+| Refund Processed | Customer | "Refund of ₹{amount} processed" |
 | Order Accepted | Customer | "Order accepted. Amount: ₹{amount}" |
 | Order Shipped | Customer | "Your order has been shipped" |
 | Order Delivered | Shop admin(s) | "Order delivered to {customer}" |
@@ -813,37 +936,56 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    UPLOAD[Customer uploads\nhandwritten list photo] --> MULTER[Multer middleware\n5 MB, image only]
+    UPLOAD[Image upload\norder photo or profile picture] --> MULTER[Multer middleware\n3 MB profile / 5 MB order, image only]
     MULTER --> STORAGE{STORAGE_PROVIDER}
 
     STORAGE -->|local default| LOCAL[Save to apps/api/uploads/\nServe at /uploads/:filename]
     STORAGE -->|cloudinary| CLOUD[Upload to Cloudinary\nReturn CDN secure_url]
 
-    LOCAL --> DB_STORE[Store URL in\nOrder.image_payload_url]
+    LOCAL --> DB_STORE[Store URL in\nOrder.image_payload_url\nor User.profile_picture_url]
     CLOUD --> DB_STORE
 ```
+
+| Upload type | Endpoint | Stored in |
+|-------------|----------|-----------|
+| Order photo | `POST /api/orders/submit-flexible-order` | `Order.image_payload_url` |
+| Profile picture | `POST /api/auth/profile/picture` | `User.profile_picture_url` |
 
 | Provider | Env | Use Case |
 |----------|-----|----------|
 | `local` | `STORAGE_PROVIDER=local` | Development, no cloud subscription |
 | `cloudinary` | `STORAGE_PROVIDER=cloudinary` + cloud credentials | Production CDN |
 
+Mobile resolves relative upload paths via `resolveMediaUrl()` using `API_BASE_URL` / `app.json` `extra.apiUrl`.
+
 ---
 
 ## 13. API Reference Map
+
+> Full curl examples and Postman collection: [`docs/apicurl/`](./apicurl/)
+
+### Health
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/health` | Public | Service status, storage provider, Razorpay enabled flag |
 
 ### Auth — `/api/auth`
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| POST | `/register/password` | Public | Register with password |
+| GET | `/captcha` | Public | Math captcha challenge for registration |
+| POST | `/register/send-email-code` | Public | Send email OTP (captcha + rate limited) |
+| POST | `/register/verify-email-code` | Public | Verify email OTP → `registrationToken` |
+| POST | `/register/password` | Public | Register with password + `registrationToken` |
 | POST | `/login/password` | Public | Login with phone/username/email |
-| POST | `/send-otp` | Public | Send OTP (rate limited) |
-| POST | `/verify-otp` | Public | Verify OTP and login |
+| POST | `/send-otp` | Public | Send OTP to phone (rate limited) |
+| POST | `/verify-otp` | Public | Verify OTP and login (403 if unregistered phone) |
 | POST | `/refresh` | Public | Rotate refresh token |
 | POST | `/logout` | Bearer | Revoke refresh token |
-| GET | `/me` | Bearer | Current user profile |
-| PATCH | `/profile` | Bearer | Update profile |
+| GET | `/me` | Bearer | Current user profile (+ `shops` for admin/super_admin) |
+| PATCH | `/profile` | Bearer | Update profile fields |
+| POST | `/profile/picture` | Bearer | Upload profile photo (multipart, 3 MB) |
 | POST | `/onboard/customer` | Customer | Complete customer onboarding |
 | POST | `/onboard/admin` | Bearer | Complete admin profile |
 | POST | `/set-password` | Bearer | Set / change password |
@@ -861,10 +1003,12 @@ flowchart TD
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| GET | `/area/:areaId` | Public | Top 20 approved shops |
+| GET | `/area/:areaId` | Public | Paginated approved shops (`page`, `limit`, default 20) |
 | GET | `/:shopId` | Public | Shop detail |
 | POST | `/apply` | Admin | Submit shop application |
 | GET | `/my/application` | Admin | Own shop applications |
+| GET | `/my/invitations` | Admin | Shops with `invited` status for this phone |
+| POST | `/:shopId/complete-registration` | Admin | Complete invited shop registration |
 | PATCH | `/my/:shopId` | Admin | Update own shop details |
 
 ### Orders — `/api/orders`
@@ -875,7 +1019,11 @@ flowchart TD
 | GET | `/my` | Customer | Customer's orders |
 | GET | `/shop/:shopId` | Admin | Shop order inbox |
 | GET | `/:orderId` | Bearer | Order detail + timeline |
-| PATCH | `/transition/accept/:id` | Admin | Accept + set amount/window |
+| PATCH | `/transition/accept/:id` | Admin | Accept + set amount/window; optional `fulfillment.lines`, `fulfillment.shopNote`, `createBackorder` for partial availability |
+| PATCH | `/transition/backorder-ready/:id` | Admin | Activate backorder when stock arrives (`Backorder_Waiting` → `Accepted`) |
+| PATCH | `/transition/reject/:id` | Admin | Reject with reason (Created only); notifies customer |
+| PATCH | `/transition/return/:id` | Customer | Return shipped/delivered order; sets `Refund_Pending` if already paid |
+| POST | `/transition/refund/:id` | Admin | Process Razorpay refund to customer for returned paid order |
 | PATCH | `/transition/select-payment/:id` | Customer | Choose UPI or COD |
 | POST | `/transition/create-razorpay-order/:id` | Customer | Create Razorpay order |
 | POST | `/transition/verify-payment/:id` | Customer | Verify UPI payment |
@@ -887,7 +1035,9 @@ flowchart TD
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| POST | `/create-ticket` | Customer | Create support ticket |
+| POST | `/create-ticket` | Bearer | Create support ticket (customer or shop on accessible order) |
+| GET | `/order/:orderId` | Bearer | Tickets + threaded messages for an order |
+| POST | `/tickets/:ticketId/messages` | Bearer | Reply on an open ticket |
 | GET | `/my` | Customer | Own tickets |
 | GET | `/merchant/active/:shopId` | Admin | Shop's active tickets |
 | PATCH | `/update-ticket/:id` | Admin | Acknowledge / resolve |
@@ -899,11 +1049,19 @@ flowchart TD
 | GET | `/shops/pending` | Pending shop applications |
 | PATCH | `/shops/:id/approve` | Approve shop |
 | PATCH | `/shops/:id/reject` | Reject shop |
-| GET | `/shops` | All shops |
+| GET | `/shops` | All shops (paginated) |
 | POST | `/shops` | Directly create shop |
+| POST | `/shops/invite` | Create invited shop + notify owner |
+| PATCH | `/shops/:id` | Edit shop fields |
+| PATCH | `/shops/:id/operational-status` | Enable / disable / on_hold |
+| DELETE | `/shops/:id` | Delete shop (if no orders) |
 | POST | `/areas` | Create area |
-| GET | `/users` | All users |
+| GET | `/users` | All users (paginated) |
+| POST | `/users` | Create customer or admin user |
+| PATCH | `/users/:id` | Edit user fields |
+| PATCH | `/users/:id/account-status` | Enable / disable / on_hold (+ revoke tokens) |
 | PATCH | `/users/:id/role` | Change user role |
+| DELETE | `/users/:id` | Delete user (if no orders) |
 
 ### Webhooks — `/api/webhooks`
 
@@ -915,12 +1073,18 @@ flowchart TD
 
 ## 14. Mobile App Navigation
 
+### Layout pattern
+
+Most authenticated screens use **`ScreenLayout`**, which renders **`ProfileBar`** at the top (avatar, name or shop name, **Profile** button). Support is available per-order via **`OrderSupportButton`** (modal with ticket list, threaded messages, and reply).
+
+In `__DEV__`, **`LoginScreen`** shows a collapsible demo-accounts panel (`devDemoAccounts.js`) for quick credential fill.
+
 ```mermaid
 flowchart TD
     START([App Launch]) --> LOAD[Load tokens\nfrom SecureStore]
     LOAD --> AUTH{Authenticated?}
 
-    AUTH -->|No| LOGIN[LoginScreen\nPassword tab | OTP tab]
+    AUTH -->|No| LOGIN[LoginScreen\nPassword tab | OTP tab\n+ dev demo accounts]
     AUTH -->|Yes| ONBOARD{isOnboarded?}
 
     ONBOARD -->|No| ONBOARD_ROUTE{role?}
@@ -930,19 +1094,35 @@ flowchart TD
     ONBOARD -->|Yes| ROLE{role?}
 
     ROLE -->|super_admin| SA_NAV[SuperAdminStack]
-    SA_NAV --> SA1[Approvals Screen\nPending shop applications]
+    SA_NAV --> SA1[SuperAdminDashboard\nShops tab | Users tab]
+    SA_NAV --> SA2[ProfileScreen]
+    SA_NAV --> SA3[ProfileOrdersScreen]
 
     ROLE -->|admin| ADM_NAV[AdminStack]
-    ADM_NAV --> ADM1[ShopInboxScreen\nOrder inbox]
-    ADM_NAV --> ADM2[ManageOrderScreen\nAccept / Ship / Deliver]
+    ADM_NAV --> ADM1[ShopInboxScreen\nOrder inbox + invitation banner]
+    ADM_NAV --> ADM2[CompleteInvitationScreen\nInvited shop registration]
+    ADM_NAV --> ADM3[ManageOrderScreen\nAccept / Ship / Deliver]
+    ADM_NAV --> ADM4[ProfileScreen]
+    ADM_NAV --> ADM5[ProfileOrdersScreen\nOrders served]
 
     ROLE -->|customer| CUS_NAV[CustomerStack]
     CUS_NAV --> CUS_TABS[Bottom Tabs]
-    CUS_TABS --> CUS1[ShopListScreen\nBrowse top shops]
-    CUS_TABS --> CUS2[MyOrdersScreen\nOrder history]
+    CUS_TABS --> CUS1[ShopListScreen\nBrowse stores]
+    CUS_TABS --> CUS2[MyOrdersScreen\nOrder history + support]
     CUS_NAV --> CUS3[PlaceOrderScreen\nText + photo upload]
-    CUS_NAV --> CUS4[OrderDetailScreen\nTrack + Pay + Deliver]
+    CUS_NAV --> CUS4[OrderDetailScreen\nTrack + Pay + Deliver + support]
+    CUS_NAV --> CUS5[ProfileScreen]
+    CUS_NAV --> CUS6[ProfileOrdersScreen\nOrders placed]
 ```
+
+### Order screen details (customer + shop)
+
+| Screen | Key UI |
+|--------|--------|
+| `MyOrdersScreen` | Order cards with status, amount, payment; UPI/COD selection; mark received; support button |
+| `OrderDetailScreen` | Full timeline, payment section, support button |
+| `ShopInboxScreen` | Order status, amount, payment status columns; support button |
+| `ManageOrderScreen` | Payment badges; ship gated on payment confirmation |
 
 ---
 
@@ -959,7 +1139,7 @@ flowchart LR
         RZP[Razorpay\nUPI payments]
         EXPO[Expo Push Service\nnotifications]
         CLD[Cloudinary\nimage CDN]
-        SMS[SMS Provider\nMSG91 / Twilio\nfuture]
+        SMS[SMS / Email\nTwilio + SMTP]
     end
 
     subgraph Infrastructure
@@ -985,7 +1165,7 @@ flowchart LR
 | Expo Push | ✅ Active | `expo-server-sdk` + device registration |
 | Local Storage | ✅ Default | `STORAGE_PROVIDER=local` in `.env` |
 | Cloudinary | ✅ Ready | `CLOUDINARY_*` in `dev.local` |
-| SMS OTP | 🔜 Planned | MSG91 / Twilio / Firebase keys in `dev.local` |
+| SMS / Email OTP | ✅ Ready (console fallback in dev) | `TWILIO_*`, `SMTP_*` in `dev.local` |
 
 ---
 
@@ -1050,6 +1230,9 @@ cp apps/api/dev.local.example apps/api/dev.local
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | `dev.local` | **Yes** |
 | `SUPER_ADMIN_PHONE`, `SUPER_ADMIN_PASSWORD` | `dev.local` | **Yes** |
 | `SUPER_ADMIN_NAME` | `.env` | No |
+| `DISABLE_AUTH_RATE_LIMIT` | `dev.local` | No (set `true` to skip rate limits in dev) |
+| `RECAPTCHA_SECRET_KEY` | `dev.local` | **Yes** (optional; math captcha used if unset) |
+| `TWILIO_*`, `SMTP_*` | `dev.local` | **Yes** (optional; console fallback in dev) |
 
 ### 16.5 Gitignore Rules
 
@@ -1089,6 +1272,50 @@ The `loadEnv()` pattern is for **local development only**. Production should set
 
 ---
 
+## 17. Dev Tooling & Scripts
+
+### npm scripts (root `package.json`)
+
+| Command | Description |
+|---------|-------------|
+| `npm run api` | Start API with `--watch` on port 5000 |
+| `npm run mobile` | Start Expo dev server |
+| `npm run api:seed` | Run `apps/api/src/seeders/seed.js` — areas, users, shops, demo data |
+
+### Standalone scripts
+
+| Command | Description |
+|---------|-------------|
+| `node apps/api/scripts/run-migrations.js` | Apply schema migrations without full server boot |
+| `node apps/api/scripts/sync-demo-data.js` | Upsert demo users + 10 seeded shop owners |
+
+### SQL reference files
+
+| File | Purpose |
+|------|---------|
+| `docs/app.sql` | Canonical PostgreSQL schema (v0.4) |
+| `docs/seed-data.sql` | Demo data with fixed UUIDs |
+| `docs/database.md` | How to apply schema + seed manually via `psql` |
+
+### Mobile dev config
+
+| File | Purpose |
+|------|---------|
+| `apps/mobile/app.json` → `extra.apiUrl` | LAN IP for physical device testing (not `localhost`) |
+| `apps/mobile/src/config/devDemoAccounts.js` | Quick-fill credentials on login screen (`__DEV__` only) |
+
+### Demo credentials (after seed)
+
+| Role | Login | Password |
+|------|-------|----------|
+| Customer | `8888888888` or `customer1` | `Customer@123` |
+| Shop Admin | `9999999999` or `shopadmin` | `Admin@12345` |
+| Super Admin | `9000000001` or `superadmin` | `SuperAdmin@123` |
+| Shop owners | `9876500001`–`9876500010` | `Admin@12345` |
+| OTP / email code (dev) | — | `123456` (`DEV_OTP` in `dev.local`) |
+
+---
+
 ## Appendix: Environment Variable Reference
 
 ### dev.local (secrets — 🚫 never commit)
@@ -1105,6 +1332,9 @@ JWT_REFRESH_SECRET=your-refresh-secret-min-32-chars
 
 # Dev OTP (development only)
 DEV_OTP=123456
+
+# Skip auth rate limits during heavy dev testing
+# DISABLE_AUTH_RATE_LIMIT=true
 
 # Super admin seed credentials
 SUPER_ADMIN_PHONE=9000000001
@@ -1163,4 +1393,4 @@ Demo logins (after seed):
 Email security code in dev: **123456** (same as `DEV_OTP` in `dev.local`).
 ---
 
-*Last updated: August 2026 · Localite MVP v0.2 · secrets via dev.local*
+*Last updated: August 2026 · Localite MVP v0.6 · secrets via dev.local*

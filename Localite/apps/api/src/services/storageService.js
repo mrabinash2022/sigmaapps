@@ -19,7 +19,7 @@ async function uploadLocal(file) {
   return `${BASE_URL}/uploads/${filename}`;
 }
 
-async function uploadCloudinary(file) {
+async function uploadCloudinary(file, folder = 'orders') {
   const cloudinary = (await import('cloudinary')).v2;
   cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -28,7 +28,7 @@ async function uploadCloudinary(file) {
   });
 
   const result = await cloudinary.uploader.upload(file.path, {
-    folder: 'localite/orders',
+    folder: `localite/${folder}`,
     resource_type: 'image',
   });
 
@@ -36,7 +36,7 @@ async function uploadCloudinary(file) {
   return result.secure_url;
 }
 
-export async function uploadImage(file) {
+export async function uploadImage(file, { folder = 'orders' } = {}) {
   if (!file) return null;
 
   switch (STORAGE_PROVIDER) {
@@ -44,11 +44,15 @@ export async function uploadImage(file) {
       if (!process.env.CLOUDINARY_CLOUD_NAME) {
         throw new Error('Cloudinary not configured. Set STORAGE_PROVIDER=local or add Cloudinary credentials.');
       }
-      return uploadCloudinary(file);
+      return uploadCloudinary(file, folder);
     case 'local':
     default:
       return uploadLocal(file);
   }
+}
+
+export async function uploadCatalogImage(file) {
+  return uploadImage(file, { folder: 'catalog' });
 }
 
 export function getStorageInfo() {

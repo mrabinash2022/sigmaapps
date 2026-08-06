@@ -11,7 +11,16 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../../services/api';
-import { OrderStatus, PaymentMethod, PaymentStatus } from '@localite/shared';
+import {
+  OrderStatus,
+  PaymentMethod,
+  PaymentStatus,
+  formatOrderItemsSummary,
+  getCatalogEstimatedTotal,
+  parseCatalogPayload,
+  canReorderOrder,
+  isDeliveredOrder,
+} from '@localite/shared';
 import ScreenLayout from '../../components/ScreenLayout';
 import { OrderSupportButton } from '../../components/OrderSupportButton';
 
@@ -20,7 +29,17 @@ const STATUS_COLORS = {
   [OrderStatus.ACCEPTED]: '#3b82f6',
   [OrderStatus.SHIPPED]: '#8b5cf6',
   [OrderStatus.DELIVERED]: '#22c55e',
+  [OrderStatus.REJECTED]: '#ef4444',
+  [OrderStatus.RETURNED]: '#dc2626',
 };
+
+const RETURN_REASONS = [
+  'Wrong items received',
+  'Damaged or spoiled products',
+  'Quality not acceptable',
+  'Ordered by mistake',
+  'Other issue',
+];
 
 const PAYMENT_METHOD_LABELS = {
   [PaymentMethod.UPI_INSTANT]: 'UPI / Payment gateway',
@@ -32,6 +51,8 @@ const PAYMENT_STATUS_LABELS = {
   [PaymentStatus.PAID]: 'Paid',
   [PaymentStatus.FAILED]: 'Payment failed',
   [PaymentStatus.NOT_REQUIRED]: 'Pay on delivery',
+  [PaymentStatus.REFUND_PENDING]: 'Refund pending',
+  [PaymentStatus.REFUNDED]: 'Refunded',
 };
 
 function formatAmount(amount) {
@@ -131,17 +152,73 @@ export default function MyOrdersScreen({ navigation }) {
     }
   };
 
+  const requestReturn = (order) => {
+    Alert.alert(
+      'Return order',
+      'Select a reason',
+      [
+        ...RETURN_REASONS.map((reason) => ({
+          text: reason,
+          onPress: () => confirmReturn(order, reason),
+        })),
+        { text: 'Cancel', style: 'cancel' },
+      ],
+    );
+  };
+
+  const handleReorder = (order) => {
+    if (!canReorderOrder(order)) {
+      Alert.alert('Cannot reorder', 'This order has no items to reorder.');
+      return;
+    }
+    navigation.navigate('ReorderConfirm', { orderId: order.id });
+  };
+
+  const confirmReturn = (order, reason) => {
+    const paidNote = order.paymentStatus === PaymentStatus.PAID
+      ? ' You have already paid — the shop will process your refund.'
+      : '';
+
+    Alert.alert(
+      'Confirm return?',
+      `Return this order to ${order.shop?.name}?${paidNote}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Return order',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { order: updated } = await api.returnOrder(order.id, reason);
+              updateOrderInList(updated);
+              Alert.alert(
+                'Return submitted',
+                updated.paymentStatus === PaymentStatus.REFUND_PENDING
+                  ? 'The shop has been notified and will process your refund.'
+                  : 'The shop has been notified of your return.',
+              );
+            } catch (err) {
+              Alert.alert('Error', err.message);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const renderItems = (order) => {
-    if (order.textPayload?.trim()) {
-      return order.textPayload.trim();
-    }
-    if (order.imagePayloadUrl) {
-      return 'Image order — handwritten list uploaded';
-    }
+    const summary = formatOrderItemsSummary(order);
+    if (summary) return summary;
+    if (order.textPayload?.trim()) return order.textPayload.trim();
+    if (order.imagePayloadUrl) return 'Handwritten list (photo)';
     return 'No item details';
   };
 
   const renderPaymentSection = (order) => {
+    if (order.orderStatus === OrderStatus.REJECTED || order.orderStatus === OrderStatus.RETURNED) {
+      return null;
+    }
+
     const isPaying = payingId === order.id;
 
     if (order.orderStatus === OrderStatus.ACCEPTED && !order.paymentMethod) {
@@ -217,7 +294,7 @@ export default function MyOrdersScreen({ navigation }) {
         <View style={styles.metaRow}>
           <View style={styles.metaBlock}>
             <Text style={styles.label}>Amount</Text>
-            <Text style={styles.amount}>{amountLabel || 'Awaiting shop quote'}</Text>
+            <Text style={styles.amount}>{amountLabel || (getCatalogEstimatedTotal(parseCatalogPayload(order)) != null ? `Est. ${formatAmount(getCatalogEstimatedTotal(parseCatalogPayload(order)))}` : 'Awaiting shop quote')}</Text>
           </View>
           {order.deliveryTimeWindow ? (
             <View style={styles.metaBlock}>
@@ -229,20 +306,54 @@ export default function MyOrdersScreen({ navigation }) {
 
         <View style={styles.section}>
           <Text style={styles.label}>Payment</Text>
-          <Text style={styles.body}>
-            Method: {order.paymentMethod ? PAYMENT_METHOD_LABELS[order.paymentMethod] : 'Not selected'}
-          </Text>
-          <Text style={styles.body}>
-            Status: {PAYMENT_STATUS_LABELS[order.paymentStatus] || order.paymentStatus || '—'}
-          </Text>
+          {order.orderStatus === OrderStatus.REJECTED ? (
+            <Text style={styles.rejectedText}>
+              This order was rejected by the shop.
+              {order.rejectionReason ? ` Reason: ${order.rejectionReason}` : ''}
+            </Text>
+          ) : order.orderStatus === OrderStatus.RETURNED ? (
+            <Text style={styles.rejectedText}>
+              Returned{order.returnReason ? `: ${order.returnReason}` : ''}.
+              {order.paymentStatus === PaymentStatus.REFUND_PENDING
+                ? ' Refund is being processed by the shop.'
+                : order.paymentStatus === PaymentStatus.REFUNDED
+                  ? ' Refund completed.'
+                  : ''}
+            </Text>
+          ) : (
+            <>
+              <Text style={styles.body}>
+                Method: {order.paymentMethod ? PAYMENT_METHOD_LABELS[order.paymentMethod] : 'Not selected'}
+              </Text>
+              <Text style={styles.body}>
+                Status: {PAYMENT_STATUS_LABELS[order.paymentStatus] || order.paymentStatus || '—'}
+              </Text>
+            </>
+          )}
         </View>
 
         {renderPaymentSection(order)}
 
         {order.orderStatus === OrderStatus.SHIPPED && (
-          <TouchableOpacity style={styles.btn} onPress={() => markDelivered(order)}>
-            <Text style={styles.btnText}>Mark as received</Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity style={styles.btn} onPress={() => markDelivered(order)}>
+              <Text style={styles.btnText}>Mark as received</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.btn, styles.btnOutline]} onPress={() => requestReturn(order)}>
+              <Text style={[styles.btnText, styles.btnOutlineText]}>Return order</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {isDeliveredOrder(order) && (
+          <>
+            <TouchableOpacity style={styles.btn} onPress={() => handleReorder(order)}>
+              <Text style={styles.btnText}>Reorder</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.btn, styles.btnOutline]} onPress={() => requestReturn(order)}>
+              <Text style={[styles.btnText, styles.btnOutlineText]}>Return order</Text>
+            </TouchableOpacity>
+          </>
         )}
 
         <TouchableOpacity
@@ -335,4 +446,5 @@ const styles = StyleSheet.create({
   btnOutlineText: { color: '#1a7f4b' },
   linkBtn: { marginTop: 12, alignItems: 'center', padding: 8 },
   linkText: { color: '#1a7f4b', fontWeight: '600', fontSize: 13 },
+  rejectedText: { fontSize: 14, color: '#b91c1c', lineHeight: 20 },
 });

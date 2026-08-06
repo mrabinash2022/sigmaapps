@@ -1,14 +1,19 @@
 import { Router } from 'express';
 import { Op } from 'sequelize';
-import { Shop, ShopUser, Area } from '../models/index.js';
-import { ShopOperationalStatus, ShopStatus, UserRole } from '@localite/shared';
+import { Shop, ShopUser, Area, ShopCatalogItem } from '../models/index.js';
+import sequelize from '../database.js';
+import { ShopOperationalStatus, ShopStatus, UserRole, CatalogPublishStatus } from '@localite/shared';
 import { isShopPubliclyListed } from '@localite/shared';
 import { authenticate, requireRole } from '../middleware/auth.js';
+import { getShopCatalog } from '../services/catalogService.js';
+import catalogManageRoutes from './catalogManageRoutes.js';
 import { linkInvitedShopToUser, allocateShopCode, shopCodeForName, findShopsForAdmin } from '../services/shopService.js';
 import { notifySuperAdminsNewShopRequest } from '../services/shopNotificationService.js';
 import { parsePagination, paginatedResponse } from '../utils/pagination.js';
 
 const router = Router();
+
+router.use(catalogManageRoutes);
 
 router.get('/area/:areaId', async (req, res, next) => {
   try {
@@ -29,7 +34,46 @@ router.get('/area/:areaId', async (req, res, next) => {
       limit,
       offset,
     });
-    res.json(paginatedResponse(rows, { total: count, page, limit }));
+
+    const shopIds = rows.map((s) => s.id);
+    let catalogCounts = {};
+    if (shopIds.length) {
+      const counts = await ShopCatalogItem.findAll({
+        attributes: ['shopId', [sequelize.fn('COUNT', sequelize.col('id')), 'catalogItemCount']],
+        where: {
+          shopId: shopIds,
+          isAvailable: true,
+          publishStatus: CatalogPublishStatus.PUBLISHED,
+        },
+        group: ['shopId'],
+        raw: true,
+      });
+      catalogCounts = Object.fromEntries(
+        counts.map((row) => [row.shopId, Number(row.catalogItemCount)]),
+      );
+    }
+
+    const items = rows.map((shop) => ({
+      ...shop.toJSON(),
+      catalogItemCount: catalogCounts[shop.id] || 0,
+    }));
+
+    res.json(paginatedResponse(items, { total: count, page, limit }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/:shopId/catalog', async (req, res, next) => {
+  try {
+    const shop = await Shop.findByPk(req.params.shopId, {
+      attributes: ['id', 'name', 'category', 'status', 'operationalStatus', 'isVerified', 'visualCatalogEnabled'],
+    });
+    if (!shop || !isShopPubliclyListed(shop)) {
+      return res.status(404).json({ error: 'Shop not found' });
+    }
+    const catalog = await getShopCatalog(shop);
+    res.json({ shop: { id: shop.id, name: shop.name, category: shop.category }, ...catalog });
   } catch (err) {
     next(err);
   }

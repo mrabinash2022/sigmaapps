@@ -27,6 +27,28 @@ export function canShip(order) {
   return true;
 }
 
+export function validateRejectPayload({ reason }) {
+  if (!reason?.trim()) {
+    throw new OrderStateError('A rejection reason is required');
+  }
+  if (reason.trim().length < 3) {
+    throw new OrderStateError('Rejection reason must be at least 3 characters');
+  }
+}
+
+export function validateReturnPayload({ reason }) {
+  if (!reason?.trim()) {
+    throw new OrderStateError('A return reason is required');
+  }
+  if (reason.trim().length < 3) {
+    throw new OrderStateError('Return reason must be at least 3 characters');
+  }
+}
+
+export function orderRequiresRefund(order) {
+  return order.paymentStatus === PaymentStatus.PAID;
+}
+
 export function validateAcceptPayload({ finalBillAmount, deliveryTimeWindow }) {
   if (finalBillAmount == null || Number(finalBillAmount) <= 0) {
     throw new OrderStateError('finalBillAmount must be a positive number');

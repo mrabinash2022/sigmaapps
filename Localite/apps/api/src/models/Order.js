@@ -60,6 +60,41 @@ const Order = sequelize.define('Order', {
     allowNull: true,
     field: 'razorpay_payment_id',
   },
+  rejectionReason: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    field: 'rejection_reason',
+  },
+  catalogPayload: {
+    type: DataTypes.JSONB,
+    allowNull: true,
+    field: 'catalog_payload',
+  },
+  returnReason: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    field: 'return_reason',
+  },
+  razorpayRefundId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    field: 'razorpay_refund_id',
+  },
+  returnedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'returned_at',
+  },
+  parentOrderId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    field: 'parent_order_id',
+  },
+  fulfillmentPayload: {
+    type: DataTypes.JSONB,
+    allowNull: true,
+    field: 'fulfillment_payload',
+  },
 });
 
 export default Order;

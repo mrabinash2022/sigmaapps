@@ -1,24 +1,32 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
-  FlatList,
+  SectionList,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { ShopOperationalStatus, PaymentStatus } from '@localite/shared';
+import { ShopOperationalStatus, PaymentStatus, formatOrderItemsSummary } from '@localite/shared';
 import { api } from '../../services/api';
 import ScreenLayout from '../../components/ScreenLayout';
 import { OrderSupportButton } from '../../components/OrderSupportButton';
+import {
+  buildOrderQueueSections,
+  formatOrderTime,
+  getQueueSummary,
+} from '../../utils/orderQueue';
 
 const ORDER_STATUS_COLORS = {
   Created: '#f59e0b',
+  Backorder_Waiting: '#d97706',
   Accepted: '#3b82f6',
   Shipped: '#8b5cf6',
   Delivered: '#22c55e',
+  Rejected: '#ef4444',
+  Returned: '#dc2626',
 };
 
 const PAYMENT_STATUS_LABELS = {
@@ -26,6 +34,8 @@ const PAYMENT_STATUS_LABELS = {
   [PaymentStatus.PAID]: 'Paid',
   [PaymentStatus.FAILED]: 'Payment failed',
   [PaymentStatus.NOT_REQUIRED]: 'Pay on delivery',
+  [PaymentStatus.REFUND_PENDING]: 'Refund pending',
+  [PaymentStatus.REFUNDED]: 'Refunded',
 };
 
 const PAYMENT_STATUS_COLORS = {
@@ -33,12 +43,91 @@ const PAYMENT_STATUS_COLORS = {
   [PaymentStatus.PAID]: '#22c55e',
   [PaymentStatus.FAILED]: '#ef4444',
   [PaymentStatus.NOT_REQUIRED]: '#3b82f6',
+  [PaymentStatus.REFUND_PENDING]: '#dc2626',
+  [PaymentStatus.REFUNDED]: '#6b7280',
 };
 
 function formatAmount(amount) {
   if (amount == null || amount === '') return '—';
   const n = Number(amount);
   return Number.isFinite(n) ? `₹${n.toFixed(2)}` : '—';
+}
+
+function QueueSummaryBar({ summary }) {
+  if (summary.active === 0) {
+    return (
+      <View style={styles.summaryBar}>
+        <Text style={styles.summaryText}>No active orders in queue</Text>
+      </View>
+    );
+  }
+
+  const parts = [];
+  if (summary.waiting > 0) parts.push(`${summary.waiting} new`);
+  if (summary.backorder > 0) parts.push(`${summary.backorder} backorder`);
+  if (summary.preparing > 0) parts.push(`${summary.preparing} preparing`);
+  if (summary.returns > 0) parts.push(`${summary.returns} refund due`);
+
+  return (
+    <View style={styles.summaryBar}>
+      <Text style={styles.summaryTitle}>Order queue</Text>
+      <Text style={styles.summaryText}>{parts.join(' · ')}</Text>
+      <Text style={styles.summaryHint}>Oldest orders appear first — work top to bottom</Text>
+    </View>
+  );
+}
+
+function OrderQueueCard({ item, position, showPosition, onPress }) {
+  const paymentStatusColor = PAYMENT_STATUS_COLORS[item.paymentStatus] || '#999';
+  const orderStatusColor = ORDER_STATUS_COLORS[item.orderStatus] || '#999';
+
+  return (
+    <View style={styles.card}>
+      <TouchableOpacity onPress={onPress}>
+        <View style={styles.cardTop}>
+          <View style={styles.cardTitleRow}>
+            {showPosition && (
+              <View style={styles.queueBadge}>
+                <Text style={styles.queueBadgeText}>#{position}</Text>
+              </View>
+            )}
+            <View style={{ flex: 1 }}>
+              <Text style={styles.customer}>{item.customer?.name}</Text>
+              <Text style={styles.phone}>{item.customer?.phone}</Text>
+            </View>
+          </View>
+          <OrderSupportButton orderId={item.id} compact />
+        </View>
+
+        <Text style={styles.placedAt}>Placed {formatOrderTime(item.createdAt)}</Text>
+
+        <View style={styles.metaRow}>
+          <View style={styles.metaItem}>
+            <Text style={styles.metaLabel}>Order</Text>
+            <View style={[styles.badge, { backgroundColor: orderStatusColor }]}>
+              <Text style={styles.badgeText}>{item.orderStatus}</Text>
+            </View>
+          </View>
+          <View style={styles.metaItem}>
+            <Text style={styles.metaLabel}>Amount</Text>
+            <Text style={styles.amount}>{formatAmount(item.finalBillAmount)}</Text>
+          </View>
+          <View style={styles.metaItem}>
+            <Text style={styles.metaLabel}>Payment</Text>
+            <View style={[styles.badge, { backgroundColor: paymentStatusColor }]}>
+              <Text style={styles.badgeText}>
+                {PAYMENT_STATUS_LABELS[item.paymentStatus] || item.paymentStatus || '—'}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <Text style={styles.preview} numberOfLines={2}>
+          {formatOrderItemsSummary(item) || item.textPayload || '(Image order)'}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
 }
 
 export default function ShopInboxScreen({ navigation }) {
@@ -49,6 +138,7 @@ export default function ShopInboxScreen({ navigation }) {
   const [invitedShop, setInvitedShop] = useState(null);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -93,6 +183,13 @@ export default function ShopInboxScreen({ navigation }) {
   };
 
   useFocusEffect(useCallback(() => { load(); }, []));
+
+  const sections = useMemo(
+    () => buildOrderQueueSections(orders, { includeCompleted: showCompleted }),
+    [orders, showCompleted],
+  );
+
+  const summary = useMemo(() => getQueueSummary(orders), [orders]);
 
   if (loading) {
     return <View style={styles.center}><ActivityIndicator size="large" color="#1a7f4b" /></View>;
@@ -139,53 +236,52 @@ export default function ShopInboxScreen({ navigation }) {
     <ScreenLayout>
       <View style={styles.container}>
         <Text style={styles.heading}>{shopName}</Text>
-        <Text style={styles.sub}>Order Inbox</Text>
+        <Text style={styles.sub}>Order queue</Text>
 
-        <FlatList
-        data={orders}
-        keyExtractor={(item) => item.id}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
-        contentContainerStyle={{ paddingBottom: 24 }}
-        ListEmptyComponent={<Text style={styles.empty}>No orders yet</Text>}
-        renderItem={({ item }) => {
-          const paymentStatusColor = PAYMENT_STATUS_COLORS[item.paymentStatus] || '#999';
-          const orderStatusColor = ORDER_STATUS_COLORS[item.orderStatus] || '#999';
+        <QueueSummaryBar summary={summary} />
 
-          return (
-            <View style={styles.card}>
-              <TouchableOpacity onPress={() => navigation.navigate('ManageOrder', { orderId: item.id })}>
-                <View style={styles.cardTop}>
-                  <Text style={styles.customer}>{item.customer?.name} · {item.customer?.phone}</Text>
-                  <OrderSupportButton orderId={item.id} compact />
-                </View>
-                <View style={styles.metaRow}>
-                <View style={styles.metaItem}>
-                  <Text style={styles.metaLabel}>Order</Text>
-                  <View style={[styles.badge, { backgroundColor: orderStatusColor }]}>
-                    <Text style={styles.badgeText}>{item.orderStatus}</Text>
-                  </View>
-                </View>
-                <View style={styles.metaItem}>
-                  <Text style={styles.metaLabel}>Amount</Text>
-                  <Text style={styles.amount}>{formatAmount(item.finalBillAmount)}</Text>
-                </View>
-                <View style={styles.metaItem}>
-                  <Text style={styles.metaLabel}>Payment</Text>
-                  <View style={[styles.badge, { backgroundColor: paymentStatusColor }]}>
-                    <Text style={styles.badgeText}>
-                      {PAYMENT_STATUS_LABELS[item.paymentStatus] || item.paymentStatus || '—'}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-                <Text style={styles.preview} numberOfLines={2}>
-                  {item.textPayload || '(Image order)'}
-                </Text>
-              </TouchableOpacity>
+        <View style={styles.filterRow}>
+          <TouchableOpacity
+            style={[styles.filterChip, !showCompleted && styles.filterChipActive]}
+            onPress={() => setShowCompleted(false)}
+          >
+            <Text style={[styles.filterText, !showCompleted && styles.filterTextActive]}>Active</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterChip, showCompleted && styles.filterChipActive]}
+            onPress={() => setShowCompleted(true)}
+          >
+            <Text style={[styles.filterText, showCompleted && styles.filterTextActive]}>Show completed</Text>
+          </TouchableOpacity>
+        </View>
+
+        <SectionList
+          sections={sections}
+          keyExtractor={(item) => item.id}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+          contentContainerStyle={{ paddingBottom: 24 }}
+          stickySectionHeadersEnabled
+          ListEmptyComponent={
+            <Text style={styles.empty}>
+              {showCompleted ? 'No orders yet' : 'Queue is clear — no active orders'}
+            </Text>
+          }
+          renderSectionHeader={({ section }) => (
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>{section.title}</Text>
+              <Text style={styles.sectionSubtitle}>{section.subtitle}</Text>
+              <Text style={styles.sectionCount}>{section.data.length} order{section.data.length === 1 ? '' : 's'}</Text>
             </View>
-          );
-        }}
-      />
+          )}
+          renderItem={({ item, index, section }) => (
+            <OrderQueueCard
+              item={item}
+              position={index + 1}
+              showPosition={section.showPosition}
+              onPress={() => navigation.navigate('ManageOrder', { orderId: item.id })}
+            />
+          )}
+        />
       </View>
     </ScreenLayout>
   );
@@ -196,11 +292,42 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   heading: { fontSize: 22, fontWeight: '700' },
   title: { fontSize: 20, fontWeight: '700', marginBottom: 8, textAlign: 'center' },
-  sub: { fontSize: 14, color: '#666', marginBottom: 16 },
-  empty: { textAlign: 'center', color: '#999', fontSize: 16 },
+  sub: { fontSize: 14, color: '#666', marginBottom: 12 },
+  empty: { textAlign: 'center', color: '#999', fontSize: 16, marginTop: 24 },
   hint: { textAlign: 'center', color: '#666', marginTop: 8, fontSize: 14, lineHeight: 20 },
   actionBtn: { marginTop: 20, backgroundColor: '#1a7f4b', paddingHorizontal: 20, paddingVertical: 14, borderRadius: 10 },
   actionText: { color: '#fff', fontWeight: '700' },
+  summaryBar: {
+    backgroundColor: '#e8f5ee',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#c8e6d4',
+  },
+  summaryTitle: { fontSize: 13, fontWeight: '800', color: '#1a7f4b', textTransform: 'uppercase', marginBottom: 4 },
+  summaryText: { fontSize: 15, fontWeight: '700', color: '#14532d' },
+  summaryHint: { fontSize: 12, color: '#166534', marginTop: 4 },
+  filterRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  filterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#fff',
+  },
+  filterChipActive: { backgroundColor: '#1a7f4b', borderColor: '#1a7f4b' },
+  filterText: { fontSize: 13, fontWeight: '600', color: '#666' },
+  filterTextActive: { color: '#fff' },
+  sectionHeader: {
+    backgroundColor: '#f8faf9',
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  sectionTitle: { fontSize: 16, fontWeight: '800', color: '#333' },
+  sectionSubtitle: { fontSize: 12, color: '#888', marginTop: 2 },
+  sectionCount: { fontSize: 11, fontWeight: '700', color: '#1a7f4b', marginTop: 4 },
   card: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -209,8 +336,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#eee',
   },
-  customer: { fontSize: 15, fontWeight: '700', flex: 1 },
-  cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  cardTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
+  cardTitleRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  queueBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#1a7f4b',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  queueBadgeText: { color: '#fff', fontWeight: '800', fontSize: 13 },
+  customer: { fontSize: 15, fontWeight: '700' },
+  phone: { fontSize: 13, color: '#666', marginTop: 2 },
+  placedAt: { fontSize: 12, color: '#999', marginTop: 8 },
   metaRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
   metaItem: { flex: 1 },
   metaLabel: { fontSize: 10, fontWeight: '700', color: '#888', textTransform: 'uppercase', marginBottom: 4 },

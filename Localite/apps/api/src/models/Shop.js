@@ -104,6 +104,12 @@ const Shop = sequelize.define('Shop', {
     allowNull: true,
     field: 'rejection_reason',
   },
+  visualCatalogEnabled: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    field: 'visual_catalog_enabled',
+  },
 });
 
 export default Shop;

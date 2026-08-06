@@ -7,6 +7,9 @@
 --
 -- CHANGELOG
 -- ---------
+-- 2026-08-06  v0.7  Partial fulfillment: Backorder_Waiting status; parent_order_id, fulfillment_payload on Orders
+-- 2026-08-06  v0.6  Orders Returned status; Refund_Pending/Refunded payment; return_reason, razorpay_refund_id
+-- 2026-08-06  v0.5  Orders.order_status Rejected; rejection_reason column
 -- 2026-08-06  v0.4  Users.profile_picture_url (profile photos)
 -- 2026-08-06  v0.3  SupportTicketMessages table; SupportTickets.raised_by_*
 -- 2026-08-06  v0.2  Orders payment fields (payment_method, payment_status, razorpay_*)
@@ -38,9 +41,9 @@ DO $$ BEGIN CREATE TYPE enum_Shops_operational_status AS ENUM ('enabled', 'disab
 DO $$ BEGIN CREATE TYPE enum_ShopUsers_role AS ENUM ('owner', 'staff'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN CREATE TYPE enum_Orders_order_type AS ENUM ('Text_List', 'Image_Scan'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE TYPE enum_Orders_order_status AS ENUM ('Created', 'Accepted', 'Shipped', 'Delivered'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE TYPE enum_Orders_order_status AS ENUM ('Created', 'Accepted', 'Shipped', 'Delivered', 'Rejected', 'Returned', 'Backorder_Waiting'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE TYPE enum_Orders_payment_method AS ENUM ('UPI_Instant', 'Cash_On_Delivery'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE TYPE enum_Orders_payment_status AS ENUM ('Pending', 'Paid', 'Failed', 'Not_Required'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE TYPE enum_Orders_payment_status AS ENUM ('Pending', 'Paid', 'Failed', 'Not_Required', 'Refund_Pending', 'Refunded'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN CREATE TYPE enum_SupportTickets_issue_type AS ENUM ('Delivery_Instruction', 'Wrong_Item', 'Damaged_Product', 'Delayed_Delivery', 'Other'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE TYPE enum_SupportTickets_ticket_status AS ENUM ('Open', 'Acknowledged', 'Resolved'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
@@ -154,6 +157,12 @@ CREATE TABLE IF NOT EXISTS "Orders" (
   payment_status       enum_Orders_payment_status DEFAULT 'Pending',
   razorpay_order_id    VARCHAR(255),
   razorpay_payment_id  VARCHAR(255),
+  rejection_reason     TEXT,
+  return_reason        TEXT,
+  razorpay_refund_id   VARCHAR(255),
+  returned_at          TIMESTAMPTZ,
+  parent_order_id      UUID REFERENCES "Orders"(id) ON DELETE SET NULL,
+  fulfillment_payload  JSONB,
   "customerId"         UUID NOT NULL REFERENCES "Users"(id) ON DELETE RESTRICT,
   "shopId"             UUID NOT NULL REFERENCES "Shops"(id) ON DELETE RESTRICT,
   "createdAt"          TIMESTAMPTZ NOT NULL DEFAULT NOW(),

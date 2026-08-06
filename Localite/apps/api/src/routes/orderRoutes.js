@@ -2,6 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import sequelize from '../database.js';
 import { Order, Shop, ShopUser } from '../models/index.js';
 import {
   OrderStatus,
@@ -10,19 +11,32 @@ import {
   PaymentStatus,
   UserRole,
   isShopOrderable,
+  hasUnavailableItems,
+  buildVisualOrderPayload,
 } from '@localite/shared';
 import { authenticate, requireRole, requireOnboarded } from '../middleware/auth.js';
 import {
   assertTransition,
   canShip,
+  orderRequiresRefund,
   validateAcceptPayload,
+  validateRejectPayload,
+  validateReturnPayload,
 } from '../services/orderStateMachine.js';
+import { createOrderFromReorder } from '../services/orderReorderService.js';
 import { getOrderWithDetails, recordOrderEvent } from '../services/orderService.js';
+import {
+  acceptOrderWithFulfillment,
+  activateBackorderOrder,
+  resolveFulfillmentLinesForAccept,
+} from '../services/orderFulfillmentService.js';
+import { buildCatalogOrderPayload, assertVisualOrderHasContent, buildVisualOrderText, buildStoredOrderPayload, shopSupportsVisualCatalog } from '../services/catalogService.js';
 import { uploadImage } from '../services/storageService.js';
 import { notifyOrderUpdate } from '../services/notificationService.js';
 import {
   createRazorpayOrder,
   isRazorpayEnabled,
+  refundPayment,
   verifyRazorpaySignature,
 } from '../services/razorpayService.js';
 
@@ -96,12 +110,18 @@ router.post(
         return res.status(400).json({ error: 'Provide textPayload or an image upload' });
       }
 
+      const catalogPayload = buildVisualOrderPayload({
+        extraText: textPayload?.trim() || '',
+        imageUrl: imagePayloadUrl,
+      });
+
       const order = await Order.create({
         customerId: req.user.id,
         shopId,
         orderType,
         textPayload: textPayload?.trim() || null,
         imagePayloadUrl,
+        catalogPayload,
         orderStatus: OrderStatus.CREATED,
         paymentStatus: PaymentStatus.PENDING,
       });
@@ -122,6 +142,114 @@ router.post(
   }
 );
 
+router.post(
+  '/submit-catalog-order',
+  authenticate,
+  requireRole(UserRole.CUSTOMER),
+  requireOnboarded,
+  upload.single('image'),
+  async (req, res, next) => {
+    try {
+      const { shopId, note, extraText, textPayload } = req.body;
+      if (!shopId) return res.status(400).json({ error: 'shopId is required' });
+
+      const shop = await Shop.findByPk(shopId);
+      if (!shop || !isShopOrderable(shop)) {
+        return res.status(404).json({ error: 'Shop not found' });
+      }
+      if (!(await shopSupportsVisualCatalog(shop))) {
+        return res.status(400).json({ error: 'This shop does not support visual catalog ordering' });
+      }
+
+      let items = [];
+      if (req.body.items) {
+        items = typeof req.body.items === 'string' ? JSON.parse(req.body.items) : req.body.items;
+      }
+
+      const catalogPayload = items.length
+        ? await buildCatalogOrderPayload(shopId, items)
+        : { items: [], estimatedTotal: 0, itemCount: 0 };
+
+      const additionalText = (extraText || textPayload || '').trim();
+      let imagePayloadUrl = null;
+      if (req.file) {
+        imagePayloadUrl = await uploadImage(req.file);
+      }
+
+      assertVisualOrderHasContent({ catalogPayload, textPayload: additionalText, imagePayloadUrl });
+
+      const storedPayload = buildStoredOrderPayload({
+        catalogPayload,
+        extraText: additionalText,
+        imagePayloadUrl,
+        note: note?.trim(),
+      });
+
+      const orderType = storedPayload.items.length
+        ? OrderType.CATALOG
+        : imagePayloadUrl
+          ? OrderType.IMAGE_SCAN
+          : OrderType.TEXT_LIST;
+
+      const textSummary = buildVisualOrderText({
+        catalogPayload: storedPayload,
+        note: note?.trim(),
+      });
+
+      const order = await Order.create({
+        customerId: req.user.id,
+        shopId,
+        orderType,
+        textPayload: textSummary || additionalText || null,
+        imagePayloadUrl,
+        catalogPayload: storedPayload,
+        orderStatus: OrderStatus.CREATED,
+        paymentStatus: PaymentStatus.PENDING,
+      });
+
+      const eventNote = storedPayload.items.length
+        ? `Visual catalog order — ${storedPayload.itemCount} item(s), est. ₹${storedPayload.estimatedTotal ?? '—'}`
+        : imagePayloadUrl
+          ? 'Visual store order — photo list uploaded'
+          : 'Visual store order — text list';
+
+      await recordOrderEvent({
+        orderId: order.id,
+        fromStatus: null,
+        toStatus: OrderStatus.CREATED,
+        actorId: req.user.id,
+        note: eventNote,
+      });
+
+      const full = await notifyAfterUpdate(order.id, 'Created');
+      res.status(201).json({ order: full });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+router.post(
+  '/reorder/:orderId',
+  authenticate,
+  requireRole(UserRole.CUSTOMER),
+  requireOnboarded,
+  async (req, res, next) => {
+    try {
+      const sourceOrder = await getOrderWithDetails(req.params.orderId);
+      if (!sourceOrder) return res.status(404).json({ error: 'Order not found' });
+      if (sourceOrder.customerId !== req.user.id) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const order = await createOrderFromReorder(sourceOrder, req.user.id);
+      res.status(201).json({ order });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 router.get('/my', authenticate, requireRole(UserRole.CUSTOMER), async (req, res, next) => {
   try {
     const orders = await Order.findAll({
@@ -129,6 +257,10 @@ router.get('/my', authenticate, requireRole(UserRole.CUSTOMER), async (req, res,
       include: [
         { association: 'shop', attributes: ['id', 'name', 'category'] },
         { association: 'events', order: [['createdAt', 'ASC']] },
+        {
+          association: 'backorderOrders',
+          attributes: ['id', 'orderStatus', 'createdAt'],
+        },
       ],
       order: [['createdAt', 'DESC']],
     });
@@ -147,7 +279,21 @@ router.get('/shop/:shopId', authenticate, requireRole(UserRole.ADMIN, UserRole.S
         { association: 'customer', attributes: ['id', 'name', 'phone', 'address'] },
         { association: 'events', order: [['createdAt', 'ASC']] },
       ],
-      order: [['createdAt', 'DESC']],
+      order: [
+        [
+          sequelize.literal(`CASE order_status
+            WHEN 'Created' THEN 1
+            WHEN 'Backorder_Waiting' THEN 2
+            WHEN 'Accepted' THEN 3
+            WHEN 'Shipped' THEN 4
+            WHEN 'Delivered' THEN 5
+            WHEN 'Rejected' THEN 6
+            WHEN 'Returned' THEN 7
+            ELSE 8 END`),
+          'ASC',
+        ],
+        ['createdAt', 'ASC'],
+      ],
     });
     res.json({ orders });
   } catch (err) {
@@ -178,6 +324,47 @@ router.get('/:orderId', authenticate, async (req, res, next) => {
 
 router.patch('/transition/accept/:orderId', authenticate, requireRole(UserRole.ADMIN, UserRole.SUPER_ADMIN), async (req, res, next) => {
   try {
+    const {
+      finalBillAmount,
+      deliveryTimeWindow,
+      fulfillment,
+      createBackorder = false,
+    } = req.body;
+    validateAcceptPayload({ finalBillAmount, deliveryTimeWindow });
+
+    const order = await Order.findByPk(req.params.orderId);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    await assertShopAccess(req.user, order.shopId);
+    assertTransition(order.orderStatus, OrderStatus.ACCEPTED);
+
+    const fulfillmentLines = resolveFulfillmentLinesForAccept(order, fulfillment?.lines);
+    const { backorderOrder } = await acceptOrderWithFulfillment({
+      order,
+      finalBillAmount,
+      deliveryTimeWindow,
+      fulfillmentLines,
+      shopNote: fulfillment?.shopNote,
+      createBackorder: Boolean(createBackorder),
+      actorId: req.user.id,
+    });
+
+    const full = await getOrderWithDetails(order.id);
+    const notifyEvent = hasUnavailableItems(full) ? 'PartialAccepted' : 'Accepted';
+    await notifyOrderUpdate(full, notifyEvent).catch(console.error);
+    if (backorderOrder) {
+      const backorderFull = await getOrderWithDetails(backorderOrder.id);
+      await notifyOrderUpdate(backorderFull, 'BackorderCreated').catch(console.error);
+    }
+
+    res.json({ order: full, backorderOrder });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/transition/backorder-ready/:orderId', authenticate, requireRole(UserRole.ADMIN, UserRole.SUPER_ADMIN), async (req, res, next) => {
+  try {
     const { finalBillAmount, deliveryTimeWindow } = req.body;
     validateAcceptPayload({ finalBillAmount, deliveryTimeWindow });
 
@@ -187,18 +374,43 @@ router.patch('/transition/accept/:orderId', authenticate, requireRole(UserRole.A
     await assertShopAccess(req.user, order.shopId);
     assertTransition(order.orderStatus, OrderStatus.ACCEPTED);
 
+    const full = await activateBackorderOrder({
+      order,
+      finalBillAmount,
+      deliveryTimeWindow,
+      actorId: req.user.id,
+    });
+
+    res.json({ order: full });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/transition/reject/:orderId', authenticate, requireRole(UserRole.ADMIN, UserRole.SUPER_ADMIN), async (req, res, next) => {
+  try {
+    const { reason } = req.body;
+    validateRejectPayload({ reason });
+
+    const order = await Order.findByPk(req.params.orderId);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    await assertShopAccess(req.user, order.shopId);
+    assertTransition(order.orderStatus, OrderStatus.REJECTED);
+
     const fromStatus = order.orderStatus;
-    await order.update({ orderStatus: OrderStatus.ACCEPTED, finalBillAmount, deliveryTimeWindow });
+    const rejectionReason = reason.trim();
+    await order.update({ orderStatus: OrderStatus.REJECTED, rejectionReason });
 
     await recordOrderEvent({
       orderId: order.id,
       fromStatus,
-      toStatus: OrderStatus.ACCEPTED,
+      toStatus: OrderStatus.REJECTED,
       actorId: req.user.id,
-      note: `Accepted. Amount: ₹${finalBillAmount}, Window: ${deliveryTimeWindow}`,
+      note: `Rejected by shop: ${rejectionReason}`,
     });
 
-    const full = await notifyAfterUpdate(order.id, 'Accepted');
+    const full = await notifyAfterUpdate(order.id, 'Rejected');
     res.json({ order: full });
   } catch (err) {
     next(err);
@@ -392,6 +604,101 @@ router.patch('/transition/deliver/:orderId', authenticate, async (req, res, next
     });
 
     const full = await notifyAfterUpdate(order.id, 'Delivered');
+    res.json({ order: full });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/transition/return/:orderId', authenticate, requireRole(UserRole.CUSTOMER), async (req, res, next) => {
+  try {
+    const { reason } = req.body;
+    validateReturnPayload({ reason });
+
+    const order = await Order.findByPk(req.params.orderId);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    if (order.customerId !== req.user.id) {
+      return res.status(403).json({ error: 'Only the customer can return this order' });
+    }
+
+    assertTransition(order.orderStatus, OrderStatus.RETURNED);
+
+    const fromStatus = order.orderStatus;
+    const returnReason = reason.trim();
+    const needsRefund = orderRequiresRefund(order);
+    const updates = {
+      orderStatus: OrderStatus.RETURNED,
+      returnReason,
+      returnedAt: new Date(),
+    };
+    if (needsRefund) {
+      updates.paymentStatus = PaymentStatus.REFUND_PENDING;
+    }
+
+    await order.update(updates);
+
+    await recordOrderEvent({
+      orderId: order.id,
+      fromStatus,
+      toStatus: OrderStatus.RETURNED,
+      actorId: req.user.id,
+      note: needsRefund
+        ? `Returned by customer (refund required): ${returnReason}`
+        : `Returned by customer: ${returnReason}`,
+    });
+
+    const full = await notifyAfterUpdate(order.id, 'Returned');
+    res.json({ order: full, refundRequired: needsRefund });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/transition/refund/:orderId', authenticate, requireRole(UserRole.ADMIN, UserRole.SUPER_ADMIN), async (req, res, next) => {
+  try {
+    const order = await Order.findByPk(req.params.orderId);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    await assertShopAccess(req.user, order.shopId);
+
+    if (order.orderStatus !== OrderStatus.RETURNED) {
+      return res.status(400).json({ error: 'Refund is only available for returned orders' });
+    }
+    if (order.paymentStatus !== PaymentStatus.REFUND_PENDING) {
+      return res.status(400).json({ error: 'This order does not have a pending refund' });
+    }
+
+    let razorpayRefundId = null;
+
+    if (isRazorpayEnabled() && order.razorpayPaymentId) {
+      const refund = await refundPayment({
+        paymentId: order.razorpayPaymentId,
+        amount: order.finalBillAmount,
+        orderId: order.id,
+      });
+      razorpayRefundId = refund.id;
+    } else if (isRazorpayEnabled() && !order.razorpayPaymentId) {
+      return res.status(400).json({
+        error: 'Cannot process Razorpay refund — payment ID missing on order. Use dev mock refund if in development.',
+      });
+    }
+
+    await order.update({
+      paymentStatus: PaymentStatus.REFUNDED,
+      razorpayRefundId,
+    });
+
+    await recordOrderEvent({
+      orderId: order.id,
+      fromStatus: order.orderStatus,
+      toStatus: order.orderStatus,
+      actorId: req.user.id,
+      note: razorpayRefundId
+        ? `Refund processed via Razorpay (${razorpayRefundId})`
+        : 'Refund marked complete (dev mock — no Razorpay payment ID)',
+    });
+
+    const full = await notifyAfterUpdate(order.id, 'Refunded');
     res.json({ order: full });
   } catch (err) {
     next(err);

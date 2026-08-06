@@ -160,8 +160,69 @@ export const api = {
   getShopsByArea: (areaId, { category, page = 1, limit = PAGE_LIMIT } = {}) =>
     request(`/api/shops/area/${areaId}${buildQuery({ category, page, limit })}`),
   getShop: (shopId) => request(`/api/shops/${shopId}`),
+  getShopCatalog: (shopId) => request(`/api/shops/${shopId}/catalog`),
   applyShop: (body) => request('/api/shops/apply', { method: 'POST', body: JSON.stringify(body) }),
   getMyShopApplication: () => request('/api/shops/my/application'),
+
+  // Shop catalog management (shopkeeper)
+  getManageCatalog: (shopId) => request(`/api/shops/my/${shopId}/catalog/manage`),
+  createCatalogItem: async (shopId, fields, imageUri = null) => {
+    await ensureTokensLoaded();
+    const formData = new FormData();
+    Object.entries(fields).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        formData.append(key, String(value));
+      }
+    });
+    if (imageUri) {
+      const filename = imageUri.split('/').pop();
+      formData.append('image', { uri: imageUri, name: filename, type: 'image/jpeg' });
+    }
+    const headers = {};
+    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+    const res = await fetch(`${API_URL}/api/shops/my/${shopId}/catalog/items`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to create product');
+    return data;
+  },
+  updateCatalogItem: async (shopId, itemId, fields, imageUri = null) => {
+    await ensureTokensLoaded();
+    const formData = new FormData();
+    Object.entries(fields).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        formData.append(key, String(value));
+      }
+    });
+    if (imageUri) {
+      const filename = imageUri.split('/').pop();
+      formData.append('image', { uri: imageUri, name: filename, type: 'image/jpeg' });
+    }
+    const headers = {};
+    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+    const res = await fetch(`${API_URL}/api/shops/my/${shopId}/catalog/items/${itemId}`, {
+      method: 'PATCH',
+      headers,
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to update product');
+    return data;
+  },
+  publishCatalogItem: (shopId, itemId) =>
+    request(`/api/shops/my/${shopId}/catalog/items/${itemId}/publish`, { method: 'PATCH' }),
+  unpublishCatalogItem: (shopId, itemId) =>
+    request(`/api/shops/my/${shopId}/catalog/items/${itemId}/unpublish`, { method: 'PATCH' }),
+  deleteCatalogItem: (shopId, itemId) =>
+    request(`/api/shops/my/${shopId}/catalog/items/${itemId}`, { method: 'DELETE' }),
+  setVisualCatalogEnabled: (shopId, enabled) =>
+    request(`/api/shops/my/${shopId}/visual-catalog`, {
+      method: 'PATCH',
+      body: JSON.stringify({ enabled }),
+    }),
 
   // Orders
   submitOrder: async (shopId, textPayload, imageUri) => {
@@ -180,11 +241,44 @@ export const api = {
     if (!res.ok) throw new Error(data.error || 'Order failed');
     return data;
   },
+  submitCatalogOrder: (shopId, items, note) =>
+    request('/api/orders/submit-catalog-order', {
+      method: 'POST',
+      body: JSON.stringify({ shopId, items, note }),
+    }),
+  submitVisualOrder: async (shopId, { items = [], extraText = '', note = '', imageUri = null } = {}) => {
+    await ensureTokensLoaded();
+    const formData = new FormData();
+    formData.append('shopId', shopId);
+    if (items.length) formData.append('items', JSON.stringify(items));
+    if (extraText) formData.append('extraText', extraText);
+    if (note) formData.append('note', note);
+    if (imageUri) {
+      const filename = imageUri.split('/').pop();
+      formData.append('image', { uri: imageUri, name: filename, type: 'image/jpeg' });
+    }
+    const headers = {};
+    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+    const res = await fetch(`${API_URL}/api/orders/submit-catalog-order`, { method: 'POST', headers, body: formData });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Order failed');
+    return data;
+  },
   getMyOrders: () => request('/api/orders/my'),
   getShopOrders: (shopId) => request(`/api/orders/shop/${shopId}`),
   getOrder: (orderId) => request(`/api/orders/${orderId}`),
-  acceptOrder: (orderId, finalBillAmount, deliveryTimeWindow) =>
+  acceptOrder: (orderId, finalBillAmount, deliveryTimeWindow, fulfillment, createBackorder) =>
     request(`/api/orders/transition/accept/${orderId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        finalBillAmount,
+        deliveryTimeWindow,
+        fulfillment,
+        createBackorder,
+      }),
+    }),
+  markBackorderReady: (orderId, finalBillAmount, deliveryTimeWindow) =>
+    request(`/api/orders/transition/backorder-ready/${orderId}`, {
       method: 'PATCH',
       body: JSON.stringify({ finalBillAmount, deliveryTimeWindow }),
     }),
@@ -206,6 +300,21 @@ export const api = {
     request(`/api/orders/transition/ship/${orderId}`, { method: 'PATCH' }),
   deliverOrder: (orderId) =>
     request(`/api/orders/transition/deliver/${orderId}`, { method: 'PATCH' }),
+  rejectOrder: (orderId, reason) =>
+    request(`/api/orders/transition/reject/${orderId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ reason }),
+    }),
+  returnOrder: (orderId, reason) =>
+    request(`/api/orders/transition/return/${orderId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ reason }),
+    }),
+  refundOrder: (orderId) =>
+    request(`/api/orders/transition/refund/${orderId}`, { method: 'POST' }),
+
+  reorderOrder: (orderId) =>
+    request(`/api/orders/reorder/${orderId}`, { method: 'POST' }),
 
   // Support
   createTicket: (orderId, issueType, customerMessage) =>

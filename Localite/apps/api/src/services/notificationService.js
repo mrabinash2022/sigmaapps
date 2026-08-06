@@ -1,4 +1,5 @@
 import { Expo } from 'expo-server-sdk';
+import { PaymentStatus, formatFulfillmentSummary } from '@localite/shared';
 import { UserDevice } from '../models/index.js';
 
 const expo = new Expo();
@@ -66,8 +67,55 @@ export async function notifyOrderUpdate(order, event) {
       customer: { title: 'Order accepted', body: `${shopName} accepted your order. Amount: ₹${order.finalBillAmount}` },
       admin: null,
     },
+    PartialAccepted: {
+      customer: {
+        title: 'Order accepted with changes',
+        body: `${shopName} accepted your order for ₹${order.finalBillAmount}. Unavailable: ${formatFulfillmentSummary(order) || 'some items'}.${order.fulfillmentPayload?.backorderOrderId ? ' A backorder was created for missing items.' : ''}`,
+      },
+      admin: null,
+    },
+    BackorderCreated: {
+      customer: {
+        title: 'Backorder placed',
+        body: `${shopName} will deliver missing items when available. You will be notified to confirm payment.`,
+      },
+      admin: null,
+    },
+    BackorderReady: {
+      customer: {
+        title: 'Backorder ready',
+        body: `${shopName} has your missing items ready. Amount: ₹${order.finalBillAmount}. Choose payment to proceed.`,
+      },
+      admin: null,
+    },
     Shipped: {
       customer: { title: 'On the way', body: `Your order from ${shopName} has been shipped` },
+      admin: null,
+    },
+    Rejected: {
+      customer: {
+        title: 'Order rejected',
+        body: `${shopName} could not accept your order. ${order.rejectionReason || 'Please try again later.'}`,
+      },
+      admin: null,
+    },
+    Returned: {
+      customer: {
+        title: 'Return recorded',
+        body: order.paymentStatus === PaymentStatus.REFUND_PENDING
+          ? `Your return was recorded. ${shopName} will process your refund shortly.`
+          : `Your return for order at ${shopName} was recorded.`,
+      },
+      admin: {
+        title: 'Order returned',
+        body: `${order.customer?.name} returned an order${order.paymentStatus === PaymentStatus.REFUND_PENDING ? ' — refund required' : ''}`,
+      },
+    },
+    Refunded: {
+      customer: {
+        title: 'Refund processed',
+        body: `${shopName} refunded ₹${order.finalBillAmount} for your returned order.`,
+      },
       admin: null,
     },
     Delivered: {

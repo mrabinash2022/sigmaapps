@@ -29,11 +29,19 @@ export const ShopCategory = {
   VEGETABLES: 'Vegetables',
   BAKERY: 'Bakery',
   GROCERY: 'Grocery',
+  FLOWERS: 'Flowers',
+  NURSERY: 'Nursery',
+};
+
+export const CatalogPublishStatus = {
+  DRAFT: 'draft',
+  PUBLISHED: 'published',
 };
 
 export const OrderType = {
   TEXT_LIST: 'Text_List',
   IMAGE_SCAN: 'Image_Scan',
+  CATALOG: 'Catalog',
 };
 
 export const OrderStatus = {
@@ -41,6 +49,9 @@ export const OrderStatus = {
   ACCEPTED: 'Accepted',
   SHIPPED: 'Shipped',
   DELIVERED: 'Delivered',
+  REJECTED: 'Rejected',
+  RETURNED: 'Returned',
+  BACKORDER_WAITING: 'Backorder_Waiting',
 };
 
 export const PaymentMethod = {
@@ -53,6 +64,8 @@ export const PaymentStatus = {
   PAID: 'Paid',
   FAILED: 'Failed',
   NOT_REQUIRED: 'Not_Required',
+  REFUND_PENDING: 'Refund_Pending',
+  REFUNDED: 'Refunded',
 };
 
 export const TicketIssueType = {
@@ -70,8 +83,11 @@ export const TicketStatus = {
 };
 
 export const ORDER_TRANSITIONS = {
-  [OrderStatus.CREATED]: [OrderStatus.ACCEPTED],
+  [OrderStatus.CREATED]: [OrderStatus.ACCEPTED, OrderStatus.REJECTED],
   [OrderStatus.ACCEPTED]: [OrderStatus.SHIPPED],
-  [OrderStatus.SHIPPED]: [OrderStatus.DELIVERED],
-  [OrderStatus.DELIVERED]: [],
+  [OrderStatus.SHIPPED]: [OrderStatus.DELIVERED, OrderStatus.RETURNED],
+  [OrderStatus.DELIVERED]: [OrderStatus.RETURNED],
+  [OrderStatus.REJECTED]: [],
+  [OrderStatus.RETURNED]: [],
+  [OrderStatus.BACKORDER_WAITING]: [OrderStatus.ACCEPTED, OrderStatus.REJECTED],
 };

@@ -10,13 +10,31 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../../services/api';
-import { OrderStatus, PaymentMethod } from '@localite/shared';
+import {
+  OrderStatus,
+  PaymentMethod,
+  PaymentStatus,
+  hasOrderItemsList,
+  canReorderOrder,
+  isDeliveredOrder,
+  getOrderStatus,
+} from '@localite/shared';
 import ScreenLayout from '../../components/ScreenLayout';
 import { OrderSupportButton } from '../../components/OrderSupportButton';
+import CatalogOrderItems from '../../components/CatalogOrderItems';
+import FulfillmentSummary from '../../components/FulfillmentSummary';
+
+const RETURN_REASONS = [
+  'Wrong items received',
+  'Damaged or spoiled products',
+  'Quality not acceptable',
+  'Ordered by mistake',
+  'Other issue',
+];
 
 const STEPS = [OrderStatus.CREATED, OrderStatus.ACCEPTED, OrderStatus.SHIPPED, OrderStatus.DELIVERED];
 
-export default function OrderDetailScreen({ route }) {
+export default function OrderDetailScreen({ route, navigation }) {
   const { orderId } = route.params;
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -69,6 +87,52 @@ export default function OrderDetailScreen({ route }) {
     }
   };
 
+  const confirmReturn = (reason) => {
+    const paidNote = order?.paymentStatus === PaymentStatus.PAID
+      ? ' You have already paid — the shop will process your refund.'
+      : '';
+
+    Alert.alert(
+      'Confirm return?',
+      `Return this order to ${order?.shop?.name}?${paidNote}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Return order',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { order: updated } = await api.returnOrder(orderId, reason);
+              setOrder(updated);
+              Alert.alert(
+                'Return submitted',
+                updated.paymentStatus === PaymentStatus.REFUND_PENDING
+                  ? 'The shop has been notified and will process your refund.'
+                  : 'The shop has been notified of your return.',
+              );
+            } catch (err) {
+              Alert.alert('Error', err.message);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const requestReturn = () => {
+    Alert.alert(
+      'Return order',
+      'Select a reason',
+      [
+        ...RETURN_REASONS.map((reason) => ({
+          text: reason,
+          onPress: () => confirmReturn(reason),
+        })),
+        { text: 'Cancel', style: 'cancel' },
+      ],
+    );
+  };
+
   if (loading || !order) {
     return (
       <ScreenLayout>
@@ -77,7 +141,11 @@ export default function OrderDetailScreen({ route }) {
     );
   }
 
-  const currentIdx = STEPS.indexOf(order.orderStatus);
+  const orderStatus = getOrderStatus(order);
+  const isRejected = orderStatus === OrderStatus.REJECTED;
+  const isReturned = orderStatus === OrderStatus.RETURNED;
+  const isBackorderWaiting = orderStatus === OrderStatus.BACKORDER_WAITING;
+  const currentIdx = (isRejected || isReturned || isBackorderWaiting) ? -1 : STEPS.indexOf(orderStatus);
 
   return (
     <ScreenLayout>
@@ -85,26 +153,65 @@ export default function OrderDetailScreen({ route }) {
         <View style={styles.titleRow}>
           <View style={{ flex: 1 }}>
             <Text style={styles.shop}>{order.shop?.name}</Text>
-            <Text style={styles.status}>Status: {order.orderStatus}</Text>
+            <Text style={[styles.status, (isRejected || isReturned) && styles.statusRejected]}>
+              Status: {orderStatus}
+            </Text>
           </View>
           <OrderSupportButton orderId={orderId} />
         </View>
 
-        <View style={styles.timeline}>
-          {STEPS.map((step, i) => (
-            <View key={step} style={styles.step}>
-              <View style={[styles.dot, i <= currentIdx && styles.dotActive]} />
-              <Text style={[styles.stepLabel, i <= currentIdx && styles.stepLabelActive]}>{step}</Text>
-            </View>
-          ))}
-        </View>
+        {isRejected ? (
+          <View style={styles.rejectedBanner}>
+            <Text style={styles.rejectedTitle}>Order rejected by shop</Text>
+            <Text style={styles.rejectedBody}>
+              {order.rejectionReason || 'The shop could not accept your order. You may place a new order or contact support.'}
+            </Text>
+          </View>
+        ) : isReturned ? (
+          <View style={styles.rejectedBanner}>
+            <Text style={styles.rejectedTitle}>Order returned</Text>
+            <Text style={styles.rejectedBody}>
+              {order.returnReason || 'You returned this order.'}
+              {order.paymentStatus === PaymentStatus.REFUND_PENDING
+                ? ' The shop will process your refund shortly.'
+                : order.paymentStatus === PaymentStatus.REFUNDED
+                  ? ' Your refund has been processed.'
+                  : ''}
+            </Text>
+          </View>
+        ) : isBackorderWaiting ? (
+          <View style={styles.backorderBanner}>
+            <Text style={styles.backorderTitle}>Backorder — waiting for stock</Text>
+            <Text style={styles.backorderBody}>
+              The shop is sourcing your missing items. You will be notified when they are ready to deliver.
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.timeline}>
+            {STEPS.map((step, i) => (
+              <View key={step} style={styles.step}>
+                <View style={[styles.dot, i <= currentIdx && styles.dotActive]} />
+                <Text style={[styles.stepLabel, i <= currentIdx && styles.stepLabelActive]}>{step}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
-        {order.textPayload && (
+        <FulfillmentSummary
+          order={order}
+          onOpenBackorder={(id) => navigation.push('OrderDetail', { orderId: id })}
+        />
+
+        {hasOrderItemsList(order) ? (
+          <View style={styles.section}>
+            <CatalogOrderItems order={order} />
+          </View>
+        ) : order.textPayload ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Your list</Text>
             <Text style={styles.body}>{order.textPayload}</Text>
           </View>
-        )}
+        ) : null}
 
         {order.finalBillAmount && (
           <View style={styles.section}>
@@ -142,9 +249,34 @@ export default function OrderDetailScreen({ route }) {
         )}
 
         {order.orderStatus === OrderStatus.SHIPPED && (
-          <TouchableOpacity style={styles.btn} onPress={markDelivered}>
-            <Text style={styles.btnText}>Received at door</Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity style={styles.btn} onPress={markDelivered}>
+              <Text style={styles.btnText}>Received at door</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.btn, styles.btnOutline]} onPress={requestReturn}>
+              <Text style={[styles.btnText, styles.btnOutlineText]}>Return order</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {isDeliveredOrder(order) && (
+          <>
+            <TouchableOpacity
+              style={styles.btn}
+              onPress={() => {
+                if (!canReorderOrder(order)) {
+                  Alert.alert('Cannot reorder', 'This order has no items to reorder.');
+                  return;
+                }
+                navigation.navigate('ReorderConfirm', { orderId });
+              }}
+            >
+              <Text style={styles.btnText}>Reorder same items</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.btn, styles.btnOutline]} onPress={requestReturn}>
+              <Text style={[styles.btnText, styles.btnOutlineText]}>Return order</Text>
+            </TouchableOpacity>
+          </>
         )}
 
         {order.events?.length > 0 && (
@@ -183,4 +315,25 @@ const styles = StyleSheet.create({
   btnOutline: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#1a7f4b' },
   btnOutlineText: { color: '#1a7f4b' },
   event: { fontSize: 12, color: '#666', marginBottom: 4 },
+  statusRejected: { color: '#ef4444', fontWeight: '600' },
+  rejectedBanner: {
+    backgroundColor: '#fef2f2',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  rejectedTitle: { fontSize: 16, fontWeight: '700', color: '#b91c1c', marginBottom: 6 },
+  rejectedBody: { fontSize: 14, color: '#7f1d1d', lineHeight: 20 },
+  backorderBanner: {
+    backgroundColor: '#fff7ed',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#fed7aa',
+  },
+  backorderTitle: { fontSize: 16, fontWeight: '700', color: '#c2410c', marginBottom: 6 },
+  backorderBody: { fontSize: 14, color: '#9a3412', lineHeight: 20 },
 });

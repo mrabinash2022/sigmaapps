@@ -7,9 +7,16 @@ import {
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { PaymentStatus } from '@localite/shared';
+import {
+  PaymentStatus,
+  formatOrderItemsSummary,
+  canReorderOrder,
+  isDeliveredOrder,
+  getOrderStatus,
+} from '@localite/shared';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { getPrimaryShop } from '../../utils/profile';
@@ -19,6 +26,8 @@ const PAYMENT_STATUS_LABELS = {
   [PaymentStatus.PAID]: 'Paid',
   [PaymentStatus.FAILED]: 'Payment failed',
   [PaymentStatus.NOT_REQUIRED]: 'Pay on delivery',
+  [PaymentStatus.REFUND_PENDING]: 'Refund pending',
+  [PaymentStatus.REFUNDED]: 'Refunded',
 };
 
 function formatAmount(amount) {
@@ -72,6 +81,14 @@ export default function ProfileOrdersScreen() {
     }
   };
 
+  const handleReorder = (order) => {
+    if (!canReorderOrder(order)) {
+      Alert.alert('Cannot reorder', 'This order has no items to reorder.');
+      return;
+    }
+    navigation.navigate('ReorderConfirm', { orderId: order.id });
+  };
+
   if (loading && !orders.length) {
     return (
       <View style={styles.center}><ActivityIndicator size="large" color="#1a7f4b" /></View>
@@ -88,23 +105,30 @@ export default function ProfileOrdersScreen() {
         ListHeaderComponent={<Text style={styles.heading}>{title}</Text>}
         ListEmptyComponent={<Text style={styles.empty}>No orders found.</Text>}
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.card} onPress={() => openOrder(item)}>
-            <View style={styles.cardRow}>
-              <Text style={styles.primary}>
-                {isCustomer ? item.shop?.name : `${item.customer?.name} · ${item.customer?.phone}`}
+          <View style={styles.card}>
+            <TouchableOpacity onPress={() => openOrder(item)}>
+              <View style={styles.cardRow}>
+                <Text style={styles.primary}>
+                  {isCustomer ? item.shop?.name : `${item.customer?.name} · ${item.customer?.phone}`}
+                </Text>
+                <Text style={styles.status}>{getOrderStatus(item)}</Text>
+              </View>
+              <View style={styles.metaRow}>
+                <Text style={styles.meta}>Amount: {formatAmount(item.finalBillAmount)}</Text>
+                <Text style={styles.meta}>
+                  Payment: {PAYMENT_STATUS_LABELS[item.paymentStatus] || item.paymentStatus || '—'}
+                </Text>
+              </View>
+              <Text style={styles.preview} numberOfLines={2}>
+                {formatOrderItemsSummary(item) || item.textPayload || '(Image order)'}
               </Text>
-              <Text style={styles.status}>{item.orderStatus}</Text>
-            </View>
-            <View style={styles.metaRow}>
-              <Text style={styles.meta}>Amount: {formatAmount(item.finalBillAmount)}</Text>
-              <Text style={styles.meta}>
-                Payment: {PAYMENT_STATUS_LABELS[item.paymentStatus] || item.paymentStatus || '—'}
-              </Text>
-            </View>
-            <Text style={styles.preview} numberOfLines={2}>
-              {item.textPayload || '(Image order)'}
-            </Text>
-          </TouchableOpacity>
+            </TouchableOpacity>
+            {isCustomer && isDeliveredOrder(item) && (
+              <TouchableOpacity style={styles.reorderBtn} onPress={() => handleReorder(item)}>
+                <Text style={styles.reorderText}>Reorder</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         )}
       />
   );
@@ -129,4 +153,12 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, gap: 8 },
   meta: { fontSize: 12, color: '#555', flex: 1 },
   preview: { fontSize: 13, color: '#666', marginTop: 8 },
+  reorderBtn: {
+    marginTop: 10,
+    backgroundColor: '#1a7f4b',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  reorderText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 });

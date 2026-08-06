@@ -1,9 +1,10 @@
 import { loadEnv } from '../config/loadEnv.js';
 import sequelize from '../database.js';
-import { Area, Shop, User, ShopUser } from '../models/index.js';
+import { Area, Shop, User, ShopUser, ShopCatalogItem } from '../models/index.js';
 import { ShopCategory, ShopOperationalStatus, ShopStatus, UserAccountStatus, UserRole } from '@localite/shared';
 import { buildShopCode, ensureShopOwnerUser, linkShopOwner } from '../services/shopService.js';
 import { hashPassword } from '../services/cryptoService.js';
+import { seedCatalogShops } from './catalogSeed.js';
 
 const DEMO_ACCOUNTS = {
   superAdmin: {
@@ -126,6 +127,16 @@ async function seed() {
       await ensureShopOwnerUser(User, Shop, ShopUser, shop, { setApplicant: false });
       console.log(`  Shop: ${shop.name}`);
     }
+
+    await seedCatalogShops({
+      Shop,
+      ShopCatalogItem,
+      User,
+      ShopUser,
+      area,
+      superAdmin,
+      ensureShopOwnerUser,
+    });
 
     // Demo shopkeeper — link to Daily Needs Grocery for easy testing
     const shopAdmin = await upsertDemoUser(DEMO_ACCOUNTS.shopAdmin, {
