@@ -87,6 +87,21 @@ JWT_SECRET=                     # use strong random strings
 Localite/
 ├── apps/api/           # Express + PostgreSQL + Sequelize
 ├── apps/mobile/        # Expo React Native
+├── apps/e2e-mobile/    # Maestro smoke test flows
 ├── packages/shared/    # Enums & constants
 └── docker-compose.yml  # PostgreSQL
 ```
+
+## Running tests
+
+From the `Localite/` directory:
+
+```bash
+npm run test:api:ci    # API integration tests (31 tests, ~1 min)
+```
+
+Requires Postgres running and `apps/api/dev.local` configured (same as API dev setup). Tests use a separate database `localite_test_db` and do not modify your dev data.
+
+For full instructions (troubleshooting, Maestro mobile smoke, CI), see **[docs/testing/README.md](docs/testing/README.md)**.
+
+On push or pull request, GitHub Actions runs the same suite automatically (workflow: `.github/workflows/api-test.yml` at the monorepo root).
