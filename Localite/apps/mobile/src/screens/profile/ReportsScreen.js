@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { REPORT_PRESETS } from '@localite/shared';
+import { useTheme } from '../../context/ThemeContext';
 import { api, getAccessToken, loadTokens } from '../../services/api';
 
 const PRESET_KEYS = ['day', 'week', 'month', 'quarter', 'custom'];
@@ -27,6 +28,8 @@ function daysAgoIso(days) {
 }
 
 export default function ReportsScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [preset, setPreset] = useState('week');
   const [format, setFormat] = useState('xlsx');
   const [fromDate, setFromDate] = useState(daysAgoIso(7));
@@ -148,7 +151,7 @@ export default function ReportsScreen() {
 
       <TouchableOpacity style={styles.secondaryBtn} onPress={loadPreview} disabled={loadingPreview}>
         {loadingPreview ? (
-          <ActivityIndicator color="#1a7f4b" />
+          <ActivityIndicator color={colors.brand} />
         ) : (
           <Text style={styles.secondaryBtnText}>Preview row count</Text>
         )}
@@ -177,70 +180,73 @@ export default function ReportsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#f8faf9' },
-  content: { padding: 16, paddingBottom: 32 },
-  heading: { fontSize: 22, fontWeight: '800', color: '#111' },
-  sub: { fontSize: 14, color: '#666', marginTop: 8, lineHeight: 20, marginBottom: 20 },
-  sectionTitle: { fontSize: 13, fontWeight: '700', color: '#1a7f4b', marginBottom: 10, marginTop: 8 },
-  presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  presetChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  presetChipActive: { backgroundColor: '#e8f5ee', borderColor: '#1a7f4b' },
-  presetText: { fontSize: 13, color: '#555', fontWeight: '600' },
-  presetTextActive: { color: '#1a7f4b' },
-  customRange: { marginBottom: 8 },
-  dateField: { marginBottom: 10 },
-  dateLabel: { fontSize: 12, color: '#666', marginBottom: 4, fontWeight: '600' },
-  input: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 15,
-  },
-  formatRow: { gap: 10, marginBottom: 16 },
-  formatOption: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  radio: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 2,
-    borderColor: '#94a3b8',
-  },
-  radioActive: { borderColor: '#1a7f4b', backgroundColor: '#1a7f4b' },
-  formatLabel: { fontSize: 15, color: '#333' },
-  secondaryBtn: {
-    borderWidth: 1,
-    borderColor: '#1a7f4b',
-    borderRadius: 10,
-    padding: 14,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  secondaryBtnText: { color: '#1a7f4b', fontWeight: '700' },
-  previewBox: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#eee',
-  },
-  previewText: { fontSize: 14, color: '#333' },
-  primaryBtn: {
-    backgroundColor: '#1a7f4b',
-    borderRadius: 10,
-    padding: 16,
-    alignItems: 'center',
-  },
-  primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  note: { fontSize: 12, color: '#888', marginTop: 14, lineHeight: 18 },
-});
+function createStyles(colors) {
+  return StyleSheet.create({
+    screen: { flex: 1, backgroundColor: colors.background },
+    content: { padding: 16, paddingBottom: 32 },
+    heading: { fontSize: 22, fontWeight: '800', color: colors.text },
+    sub: { fontSize: 14, color: colors.textSecondary, marginTop: 8, lineHeight: 20, marginBottom: 20 },
+    sectionTitle: { fontSize: 13, fontWeight: '700', color: colors.brand, marginBottom: 10, marginTop: 8 },
+    presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+    presetChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 20,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+    },
+    presetChipActive: { backgroundColor: colors.accentSurface, borderColor: colors.brand },
+    presetText: { fontSize: 13, color: colors.textSecondary, fontWeight: '600' },
+    presetTextActive: { color: colors.brand },
+    customRange: { marginBottom: 8 },
+    dateField: { marginBottom: 10 },
+    dateLabel: { fontSize: 12, color: colors.textSecondary, marginBottom: 4, fontWeight: '600' },
+    input: {
+      backgroundColor: colors.inputBg,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      borderRadius: 10,
+      padding: 12,
+      fontSize: 15,
+      color: colors.text,
+    },
+    formatRow: { gap: 10, marginBottom: 16 },
+    formatOption: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    radio: {
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      borderWidth: 2,
+      borderColor: colors.tabInactive,
+    },
+    radioActive: { borderColor: colors.brand, backgroundColor: colors.brand },
+    formatLabel: { fontSize: 15, color: colors.text },
+    secondaryBtn: {
+      borderWidth: 1,
+      borderColor: colors.brand,
+      borderRadius: 10,
+      padding: 14,
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    secondaryBtnText: { color: colors.brand, fontWeight: '700' },
+    previewBox: {
+      backgroundColor: colors.card,
+      borderRadius: 10,
+      padding: 12,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    previewText: { fontSize: 14, color: colors.text },
+    primaryBtn: {
+      backgroundColor: colors.brandDark,
+      borderRadius: 10,
+      padding: 16,
+      alignItems: 'center',
+    },
+    primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+    note: { fontSize: 12, color: colors.textMuted, marginTop: 14, lineHeight: 18 },
+  });
+}

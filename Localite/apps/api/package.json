@@ -7,6 +7,10 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "seed": "node src/seeders/seed.js",
+    "migrate": "node scripts/run-migrations.js",
+    "sync-demo": "node scripts/sync-demo-data.js",
+    "fix-demo-users": "node scripts/fix-demo-users.js",
+    "fix-otp-sessions": "node scripts/fix-otp-sessions.js",
     "test": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js",
     "test:ci": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --ci --runInBand --forceExit"
   },

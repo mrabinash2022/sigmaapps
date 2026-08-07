@@ -26,6 +26,26 @@ describe('Areas & Shops', () => {
     expect(res.body).toHaveProperty('hasMore');
   });
 
+  it('includes store info and active offers on shop list items', async () => {
+    const area = await getFirstArea();
+    const res = await api().get(`/api/shops/area/${area.id}?limit=20`);
+
+    expect(res.status).toBe(200);
+    const shop = res.body.items.find((s) => s.name === 'Daily Needs Grocery') || res.body.items[0];
+    expect(shop).toHaveProperty('storeInfo');
+    expect(shop).toHaveProperty('activeOffers');
+    expect(Array.isArray(shop.activeOffers)).toBe(true);
+
+    const grocery = res.body.items.find((s) => s.name === 'Daily Needs Grocery');
+    if (grocery?.storeInfo) {
+      expect(grocery.storeInfo.openTime).toBeTruthy();
+      expect(grocery.storeInfo.status).toHaveProperty('isOpen');
+    }
+    if (grocery?.activeOffers?.length) {
+      expect(grocery.activeOffers[0]).toHaveProperty('title');
+    }
+  });
+
   it('gets shop detail publicly', async () => {
     const area = await getFirstArea();
     const shop = await getDailyNeedsShop(area.id);

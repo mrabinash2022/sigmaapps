@@ -4,7 +4,9 @@ import { Area, Shop, User, ShopUser, ShopCatalogItem } from '../models/index.js'
 import { ShopCategory, ShopOperationalStatus, ShopStatus, UserAccountStatus, UserRole } from '@localite/shared';
 import { buildShopCode, ensureShopOwnerUser, linkShopOwner } from '../services/shopService.js';
 import { hashPassword } from '../services/cryptoService.js';
+import { migrateHomeSchema } from '../services/homeSchemaMigration.js';
 import { seedCatalogShops } from './catalogSeed.js';
+import { seedHomeDemoData } from './homeSeed.js';
 
 const DEMO_ACCOUNTS = {
   superAdmin: {
@@ -161,6 +163,10 @@ async function seed() {
       areaId: area.id,
     });
     console.log(`Demo Customer: ${customer.phone} / ${DEMO_ACCOUNTS.customer.password} / ${DEMO_ACCOUNTS.customer.email}`);
+
+    await migrateHomeSchema();
+    await seedHomeDemoData({ area });
+
     console.log(`Dev OTP (when using phone login): ${process.env.DEV_OTP || '123456'}`);
     console.log('\nSeed complete.');
     process.exit(0);

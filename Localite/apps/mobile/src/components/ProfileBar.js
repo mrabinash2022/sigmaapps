@@ -2,11 +2,29 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { getPrimaryShop, resolveMediaUrl } from '../utils/profile';
+
+const LOGO = require('../../assets/localite-logo.png');
 
 export default function ProfileBar() {
   const navigation = useNavigation();
   const { user, isAdmin, isSuperAdmin } = useAuth();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const goHome = () => {
+    try {
+      const parent = navigation.getParent();
+      if (parent?.navigate) {
+        parent.navigate('HomeTab');
+        return;
+      }
+      navigation.navigate('HomeTab');
+    } catch {
+      navigation.navigate('Home', { screen: 'HomeTab' });
+    }
+  };
 
   const { title, phone, subtitle } = useMemo(() => {
     if (!user) return { title: '', phone: '', subtitle: '' };
@@ -41,6 +59,9 @@ export default function ProfileBar() {
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity onPress={goHome} style={styles.logoBtn} accessibilityLabel="Go to home">
+        <Image source={LOGO} style={styles.logo} />
+      </TouchableOpacity>
       <View style={styles.avatar}>
         {avatarUrl ? (
           <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
@@ -64,39 +85,43 @@ export default function ProfileBar() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e8ece9',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 12,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#1a7f4b',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  avatarImage: { width: 40, height: 40, borderRadius: 20 },
-  avatarText: { color: '#fff', fontWeight: '800', fontSize: 16 },
-  info: { flex: 1 },
-  subtitle: { fontSize: 10, fontWeight: '700', color: '#888', textTransform: 'uppercase' },
-  title: { fontSize: 15, fontWeight: '700', color: '#111' },
-  phone: { fontSize: 13, color: '#666', marginTop: 1 },
-  profileBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#e8f5ee',
-    borderWidth: 1,
-    borderColor: '#c8e6d4',
-  },
-  profileBtnText: { color: '#1a7f4b', fontWeight: '700', fontSize: 12 },
-});
+function createStyles(colors) {
+  return StyleSheet.create({
+    container: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.profileBar,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.profileBarBorder,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      gap: 10,
+    },
+    logoBtn: { padding: 2 },
+    logo: { width: 36, height: 36, borderRadius: 8 },
+    avatar: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.brandDark,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+    },
+    avatarImage: { width: 40, height: 40, borderRadius: 20 },
+    avatarText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+    info: { flex: 1 },
+    subtitle: { fontSize: 10, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' },
+    title: { fontSize: 15, fontWeight: '700', color: colors.text },
+    phone: { fontSize: 13, color: colors.textSecondary, marginTop: 1 },
+    profileBtn: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 8,
+      backgroundColor: colors.accentSurface,
+      borderWidth: 1,
+      borderColor: colors.brandBorder,
+    },
+    profileBtnText: { color: colors.brand, fontWeight: '700', fontSize: 12 },
+  });
+}

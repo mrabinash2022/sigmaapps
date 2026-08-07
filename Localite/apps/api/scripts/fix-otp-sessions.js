@@ -3,6 +3,8 @@ import sequelize from '../src/database.js';
 
 loadEnv();
 
+// Clears OTP session rows and drops legacy columns from older schema iterations.
+
 await sequelize.authenticate();
 await sequelize.query('TRUNCATE TABLE "OtpSessions"');
 for (const col of ['target', 'channel', 'purpose']) {

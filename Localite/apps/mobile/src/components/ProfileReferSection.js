@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,12 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../context/ThemeContext';
 import { api } from '../services/api';
 
 export default function ProfileReferSection({ userName }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [sending, setSending] = useState(false);
@@ -41,7 +44,7 @@ export default function ProfileReferSection({ userName }) {
   return (
     <View style={styles.card}>
       <View style={styles.titleRow}>
-        <Ionicons name="gift-outline" size={20} color="#1a7f4b" />
+        <Ionicons name="gift-outline" size={20} color={colors.brand} />
         <Text style={styles.cardTitle}>Refer the app</Text>
       </View>
       <Text style={styles.body}>
@@ -53,6 +56,7 @@ export default function ProfileReferSection({ userName }) {
       <TextInput
         style={styles.input}
         placeholder="10-digit mobile number"
+        placeholderTextColor={colors.textMuted}
         keyboardType="phone-pad"
         value={phone}
         onChangeText={setPhone}
@@ -65,6 +69,7 @@ export default function ProfileReferSection({ userName }) {
       <TextInput
         style={styles.input}
         placeholder="friend@example.com"
+        placeholderTextColor={colors.textMuted}
         keyboardType="email-address"
         autoCapitalize="none"
         value={email}
@@ -85,38 +90,41 @@ export default function ProfileReferSection({ userName }) {
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#eee',
-  },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-  cardTitle: { fontSize: 16, fontWeight: '800', color: '#1a7f4b' },
-  body: { fontSize: 14, color: '#555', lineHeight: 21, marginBottom: 14 },
-  inputLabel: { fontSize: 11, fontWeight: '700', color: '#888', textTransform: 'uppercase', marginBottom: 6 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    padding: 12,
-    backgroundColor: '#fafafa',
-    fontSize: 15,
-    marginBottom: 8,
-  },
-  orText: { textAlign: 'center', color: '#999', fontWeight: '600', marginVertical: 4 },
-  btn: {
-    backgroundColor: '#1a7f4b',
-    borderRadius: 10,
-    padding: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    marginTop: 8,
-  },
-  btnIcon: { marginRight: 8 },
-  btnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
-});
+function createStyles(colors) {
+  return StyleSheet.create({
+    card: {
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+    cardTitle: { fontSize: 16, fontWeight: '800', color: colors.brand },
+    body: { fontSize: 14, color: colors.textSecondary, lineHeight: 21, marginBottom: 14 },
+    inputLabel: { fontSize: 11, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', marginBottom: 6 },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      borderRadius: 10,
+      padding: 12,
+      backgroundColor: colors.inputBg,
+      color: colors.text,
+      fontSize: 15,
+      marginBottom: 8,
+    },
+    orText: { textAlign: 'center', color: colors.textMuted, fontWeight: '600', marginVertical: 4 },
+    btn: {
+      backgroundColor: colors.brandDark,
+      borderRadius: 10,
+      padding: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      marginTop: 8,
+    },
+    btnIcon: { marginRight: 8 },
+    btnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  });
+}

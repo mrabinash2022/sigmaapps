@@ -3,8 +3,12 @@ import sequelize from '../src/database.js';
 import { User } from '../src/models/index.js';
 import { UserAccountStatus, UserRole } from '@localite/shared';
 import { hashPassword } from '../src/services/cryptoService.js';
+import { migrateHomeSchema } from '../src/services/homeSchemaMigration.js';
 
 loadEnv();
+
+await sequelize.authenticate();
+await migrateHomeSchema();
 
 const DEMO_ACCOUNTS = [
   {

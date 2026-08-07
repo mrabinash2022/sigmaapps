@@ -1,10 +1,9 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
   RefreshControl,
   Alert,
@@ -17,6 +16,8 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { UserAccountStatus, UserRole } from '@localite/shared';
 import { api, PAGE_LIMIT } from '../../services/api';
+import { useTheme } from '../../context/ThemeContext';
+import { createAdminStyles } from '../../theme/adminScreenStyles';
 
 const TABS = [
   { key: 'list', label: 'All Users' },
@@ -66,6 +67,8 @@ const emptyCreateForm = {
 };
 
 export default function SuperAdminUsersScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createAdminStyles(colors), [colors]);
   const [tab, setTab] = useState('list');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -375,6 +378,7 @@ export default function SuperAdminUsersScreen() {
       <TextInput
         style={styles.input}
         placeholder="Customer full name"
+        placeholderTextColor={colors.textMuted}
         value={createForm.name}
         onChangeText={(v) => setCreateForm({ ...createForm, name: v })}
       />
@@ -383,6 +387,7 @@ export default function SuperAdminUsersScreen() {
       <TextInput
         style={styles.input}
         placeholder="10-digit mobile number"
+        placeholderTextColor={colors.textMuted}
         keyboardType="phone-pad"
         value={createForm.phone}
         onChangeText={(v) => setCreateForm({ ...createForm, phone: v })}
@@ -392,6 +397,7 @@ export default function SuperAdminUsersScreen() {
       <TextInput
         style={styles.input}
         placeholder="customer@example.com"
+        placeholderTextColor={colors.textMuted}
         keyboardType="email-address"
         autoCapitalize="none"
         value={createForm.email}
@@ -402,6 +408,7 @@ export default function SuperAdminUsersScreen() {
       <TextInput
         style={styles.input}
         placeholder="Min 8 chars, upper, lower, number"
+        placeholderTextColor={colors.textMuted}
         secureTextEntry
         value={createForm.password}
         onChangeText={(v) => setCreateForm({ ...createForm, password: v })}
@@ -411,6 +418,7 @@ export default function SuperAdminUsersScreen() {
       <TextInput
         style={styles.input}
         placeholder="Delivery address"
+        placeholderTextColor={colors.textMuted}
         value={createForm.address}
         onChangeText={(v) => setCreateForm({ ...createForm, address: v })}
       />
@@ -482,12 +490,19 @@ export default function SuperAdminUsersScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.center}><ActivityIndicator size="large" color="#1a7f4b" /></View>
+        <View style={styles.center}><ActivityIndicator size="large" color={colors.brand} /></View>
       ) : (
         <FlatList
           data={users}
           keyExtractor={(item) => item.id}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
+          refreshControl={(
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={refresh}
+              tintColor={colors.brand}
+              colors={[colors.brand]}
+            />
+          )}
           onEndReached={loadMore}
           onEndReachedThreshold={0.3}
           contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
@@ -501,7 +516,7 @@ export default function SuperAdminUsersScreen() {
             </View>
           }
           ListFooterComponent={
-            loadingMore ? <ActivityIndicator style={{ marginVertical: 16 }} color="#1a7f4b" /> : null
+            loadingMore ? <ActivityIndicator style={{ marginVertical: 16 }} color={colors.brand} /> : null
           }
           ListEmptyComponent={<Text style={styles.empty}>No users found</Text>}
           renderItem={renderUserCard}
@@ -513,49 +528,3 @@ export default function SuperAdminUsersScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8faf9' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  tabs: { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
-  tab: { flex: 1, paddingVertical: 14, alignItems: 'center' },
-  tabActive: { borderBottomWidth: 3, borderBottomColor: '#1a7f4b' },
-  tabText: { color: '#666', fontWeight: '600', fontSize: 14 },
-  tabTextActive: { color: '#1a7f4b' },
-  filters: { flexDirection: 'row', padding: 12, gap: 8, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
-  filterChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#ddd', backgroundColor: '#fff' },
-  filterChipActive: { borderColor: '#1a7f4b', backgroundColor: '#e8f5ee' },
-  filterText: { color: '#666', fontWeight: '600', fontSize: 13 },
-  filterTextActive: { color: '#1a7f4b', fontWeight: '700', fontSize: 13 },
-  heading: { fontSize: 20, fontWeight: '700', marginBottom: 8 },
-  sub: { fontSize: 14, color: '#666', marginBottom: 16 },
-  empty: { textAlign: 'center', color: '#999', marginTop: 40 },
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#eee' },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
-  name: { fontSize: 18, fontWeight: '700', flex: 1 },
-  badge: { color: '#fff', fontSize: 11, fontWeight: '700', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, overflow: 'hidden', textTransform: 'capitalize' },
-  meta: { fontSize: 13, color: '#666', marginTop: 4 },
-  row: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  approveBtn: { flex: 1, backgroundColor: '#1a7f4b', padding: 12, borderRadius: 8, alignItems: 'center' },
-  rejectBtn: { flex: 1, borderWidth: 1, borderColor: '#ef4444', padding: 12, borderRadius: 8, alignItems: 'center' },
-  btnText: { color: '#fff', fontWeight: '700' },
-  rejectText: { color: '#ef4444', fontWeight: '700' },
-  smallBtn: { flex: 1, borderWidth: 1, borderColor: '#ddd', padding: 10, borderRadius: 8, alignItems: 'center', backgroundColor: '#fff' },
-  activeBtn: { borderColor: '#1a7f4b', backgroundColor: '#e8f5ee' },
-  holdBtn: { borderColor: '#f97316', backgroundColor: '#fff7ed' },
-  disabledBtn: { borderColor: '#9ca3af', backgroundColor: '#f3f4f6' },
-  smallBtnText: { fontSize: 12, fontWeight: '700', color: '#333' },
-  editBtn: { marginTop: 12, borderWidth: 1, borderColor: '#1a7f4b', padding: 10, borderRadius: 8, alignItems: 'center', backgroundColor: '#f0faf4' },
-  editBtnText: { color: '#1a7f4b', fontWeight: '700', fontSize: 14 },
-  deleteBtn: { marginTop: 10, alignItems: 'center', padding: 8 },
-  deleteText: { color: '#ef4444', fontWeight: '600', fontSize: 13 },
-  label: { fontSize: 14, fontWeight: '600', marginBottom: 6, marginTop: 8 },
-  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 10, padding: 14, marginBottom: 8, backgroundColor: '#fff', fontSize: 16 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#ddd', backgroundColor: '#fff' },
-  chipActive: { borderColor: '#1a7f4b', backgroundColor: '#e8f5ee' },
-  chipText: { color: '#666', fontSize: 13 },
-  chipTextActive: { color: '#1a7f4b', fontWeight: '700', fontSize: 13 },
-  modalContainer: { flex: 1, backgroundColor: '#f8faf9' },
-  modalContent: { padding: 16, paddingBottom: 40 },
-});

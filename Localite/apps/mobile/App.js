@@ -2,10 +2,13 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { ActivityIndicator, View, Pressable, Text, StyleSheet } from 'react-native';
+import { ActivityIndicator, Pressable, Text, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { UserRole } from '@localite/shared';
+import { getNavigationTheme } from './src/theme/colors';
+import SplashScreen from './src/components/SplashScreen';
 
 import LoginScreen from './src/screens/LoginScreen';
 import CustomerOnboardingScreen from './src/screens/onboarding/CustomerOnboardingScreen';
@@ -22,25 +25,36 @@ import ManageOrderScreen from './src/screens/shopkeeper/ManageOrderScreen';
 import ManageCatalogScreen from './src/screens/shopkeeper/ManageCatalogScreen';
 import EditCatalogItemScreen from './src/screens/shopkeeper/EditCatalogItemScreen';
 import SuperAdminDashboard from './src/screens/admin/SuperAdminDashboard';
+import CustomerHomeScreen from './src/screens/home/CustomerHomeScreen';
+import ShopkeeperHomeScreen from './src/screens/home/ShopkeeperHomeScreen';
+import SuperAdminHomeScreen from './src/screens/home/SuperAdminHomeScreen';
+import ManageOffersScreen from './src/screens/home/ManageOffersScreen';
+import ManageStoreInfoScreen from './src/screens/home/ManageStoreInfoScreen';
+import ManageAnnouncementsScreen from './src/screens/home/ManageAnnouncementsScreen';
 import ProfileScreen from './src/screens/profile/ProfileScreen';
 import ProfileOrdersScreen from './src/screens/profile/ProfileOrdersScreen';
 import ReportsScreen from './src/screens/profile/ReportsScreen';
 import {
-  appTabScreenOptions,
   buildTabOptions,
+  getAppTabScreenOptions,
 } from './src/navigation/tabBarConfig';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-const headerOptions = {
-  headerStyle: { backgroundColor: '#1a7f4b' },
-  headerTintColor: '#fff',
-  headerTitleStyle: { fontWeight: '700' },
-};
+function useHeaderOptions() {
+  const { colors } = useTheme();
+  return React.useMemo(() => ({
+    headerStyle: { backgroundColor: colors.headerBg },
+    headerTintColor: colors.headerText,
+    headerTitleStyle: { fontWeight: '700' },
+    contentStyle: { backgroundColor: colors.background },
+  }), [colors]);
+}
 
 function LogoutButton() {
   const { logout } = useAuth();
+  const { colors } = useTheme();
   const [loggingOut, setLoggingOut] = React.useState(false);
 
   const handleLogout = async () => {
@@ -61,9 +75,9 @@ function LogoutButton() {
       style={({ pressed }) => [styles.logout, pressed && styles.logoutPressed]}
     >
       {loggingOut ? (
-        <ActivityIndicator size="small" color="#fff" />
+        <ActivityIndicator size="small" color={colors.headerText} />
       ) : (
-        <Text style={styles.logoutText}>Logout</Text>
+        <Text style={[styles.logoutText, { color: colors.headerText }]}>Logout</Text>
       )}
     </Pressable>
   );
@@ -71,25 +85,44 @@ function LogoutButton() {
 
 function AppShell() {
   const { user } = useAuth();
+  const { colors } = useTheme();
+  const navigationTheme = React.useMemo(() => getNavigationTheme(colors), [colors]);
+  const showLightStatusBar = Boolean(user);
 
   return (
-    <NavigationContainer key={user?.id ?? 'guest'}>
-      <StatusBar style="light" />
+    <NavigationContainer key={`${user?.id ?? 'guest'}-${colors.accent}`} theme={navigationTheme}>
+      <StatusBar style={showLightStatusBar ? 'light' : (colors.mode === 'dark' ? 'light' : 'dark')} />
       <AppNavigator />
     </NavigationContainer>
   );
 }
 
-const TAB_HEADER_OPTIONS = {
-  headerStyle: headerOptions.headerStyle,
-  headerTintColor: headerOptions.headerTintColor,
-  headerTitleStyle: headerOptions.headerTitleStyle,
-  headerRight: () => <LogoutButton />,
-};
-
 function CustomerTabs() {
+  const { colors } = useTheme();
+  const headerOptions = useHeaderOptions();
+  const tabScreenOptions = React.useMemo(
+    () => ({
+      ...getAppTabScreenOptions(colors),
+      ...headerOptions,
+      headerRight: () => <LogoutButton />,
+    }),
+    [colors, headerOptions],
+  );
+
   return (
-    <Tab.Navigator screenOptions={{ ...appTabScreenOptions, ...TAB_HEADER_OPTIONS }}>
+    <Tab.Navigator screenOptions={tabScreenOptions}>
+      <Tab.Screen
+        name="HomeTab"
+        component={CustomerHomeScreen}
+        options={buildTabOptions({
+          label: 'Home',
+          title: 'Home',
+          iconActive: 'home',
+          iconInactive: 'home-outline',
+          testID: 'tab-home',
+          colors,
+        })}
+      />
       <Tab.Screen
         name="MyOrders"
         component={MyOrdersScreen}
@@ -99,6 +132,7 @@ function CustomerTabs() {
           iconActive: 'receipt',
           iconInactive: 'receipt-outline',
           testID: 'tab-orders',
+          colors,
         })}
       />
       <Tab.Screen
@@ -110,6 +144,7 @@ function CustomerTabs() {
           iconActive: 'storefront',
           iconInactive: 'storefront-outline',
           testID: 'tab-stores',
+          colors,
         })}
       />
     </Tab.Navigator>
@@ -117,6 +152,7 @@ function CustomerTabs() {
 }
 
 function CustomerStack() {
+  const headerOptions = useHeaderOptions();
   return (
     <Stack.Navigator screenOptions={headerOptions}>
       <Stack.Screen name="Home" component={CustomerTabs} options={{ headerShown: false }} />
@@ -127,13 +163,38 @@ function CustomerStack() {
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
       <Stack.Screen name="ProfileOrders" component={ProfileOrdersScreen} options={{ title: 'Order History' }} />
       <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Reports' }} />
+      <Stack.Screen name="ManageOffers" component={ManageOffersScreen} options={{ title: 'Offers & discounts' }} />
+      <Stack.Screen name="ManageStoreInfo" component={ManageStoreInfoScreen} options={{ title: 'Store info' }} />
     </Stack.Navigator>
   );
 }
 
 function AdminTabs() {
+  const { colors } = useTheme();
+  const headerOptions = useHeaderOptions();
+  const tabScreenOptions = React.useMemo(
+    () => ({
+      ...getAppTabScreenOptions(colors),
+      ...headerOptions,
+      headerRight: () => <LogoutButton />,
+    }),
+    [colors, headerOptions],
+  );
+
   return (
-    <Tab.Navigator screenOptions={{ ...appTabScreenOptions, ...TAB_HEADER_OPTIONS }}>
+    <Tab.Navigator screenOptions={tabScreenOptions}>
+      <Tab.Screen
+        name="HomeTab"
+        component={ShopkeeperHomeScreen}
+        options={buildTabOptions({
+          label: 'Home',
+          title: 'Home',
+          iconActive: 'home',
+          iconInactive: 'home-outline',
+          testID: 'tab-home',
+          colors,
+        })}
+      />
       <Tab.Screen
         name="Inbox"
         component={ShopInboxScreen}
@@ -143,6 +204,7 @@ function AdminTabs() {
           iconActive: 'receipt',
           iconInactive: 'receipt-outline',
           testID: 'tab-orders',
+          colors,
         })}
       />
       <Tab.Screen
@@ -153,6 +215,7 @@ function AdminTabs() {
           title: 'Products',
           iconActive: 'grid',
           iconInactive: 'grid-outline',
+          colors,
         })}
       />
     </Tab.Navigator>
@@ -160,6 +223,7 @@ function AdminTabs() {
 }
 
 function AdminStack() {
+  const headerOptions = useHeaderOptions();
   return (
     <Stack.Navigator screenOptions={{ ...headerOptions, headerRight: () => <LogoutButton /> }}>
       <Stack.Screen name="Home" component={AdminTabs} options={{ headerShown: false }} />
@@ -169,17 +233,72 @@ function AdminStack() {
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Shop Profile' }} />
       <Stack.Screen name="ProfileOrders" component={ProfileOrdersScreen} options={{ title: 'Orders Served' }} />
       <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Reports' }} />
+      <Stack.Screen name="ManageOffers" component={ManageOffersScreen} options={{ title: 'Offers & discounts' }} />
+      <Stack.Screen name="ManageStoreInfo" component={ManageStoreInfoScreen} options={{ title: 'Store info' }} />
     </Stack.Navigator>
   );
 }
 
+function SuperAdminTabs() {
+  const { colors } = useTheme();
+  const headerOptions = useHeaderOptions();
+  const tabScreenOptions = React.useMemo(
+    () => ({
+      ...getAppTabScreenOptions(colors),
+      ...headerOptions,
+      headerRight: () => <LogoutButton />,
+    }),
+    [colors, headerOptions],
+  );
+
+  return (
+    <Tab.Navigator screenOptions={tabScreenOptions}>
+      <Tab.Screen
+        name="HomeTab"
+        component={SuperAdminHomeScreen}
+        options={buildTabOptions({
+          label: 'Home',
+          title: 'Home',
+          iconActive: 'home',
+          iconInactive: 'home-outline',
+          testID: 'tab-home',
+          colors,
+        })}
+      />
+      <Tab.Screen
+        name="Dashboard"
+        component={SuperAdminDashboard}
+        options={buildTabOptions({
+          label: 'Admin',
+          title: 'Super Admin',
+          iconActive: 'shield',
+          iconInactive: 'shield-outline',
+          colors,
+        })}
+      />
+    </Tab.Navigator>
+  );
+}
+
 function SuperAdminStack() {
+  const headerOptions = useHeaderOptions();
   return (
     <Stack.Navigator screenOptions={{ ...headerOptions, headerRight: () => <LogoutButton /> }}>
-      <Stack.Screen name="Dashboard" component={SuperAdminDashboard} options={{ title: 'Super Admin' }} />
+      <Stack.Screen name="Home" component={SuperAdminTabs} options={{ headerShown: false }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
       <Stack.Screen name="ProfileOrders" component={ProfileOrdersScreen} options={{ title: 'Orders' }} />
       <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Reports' }} />
+      <Stack.Screen
+        name="ManageOffers"
+        component={ManageOffersScreen}
+        initialParams={{ platform: true }}
+        options={{ title: 'Platform offers' }}
+      />
+      <Stack.Screen
+        name="ManageAnnouncements"
+        component={ManageAnnouncementsScreen}
+        options={{ title: 'Announcements' }}
+      />
     </Stack.Navigator>
   );
 }
@@ -193,13 +312,23 @@ function OnboardingRouter() {
 
 function AppNavigator() {
   const { user, loading, needsOnboarding, isSuperAdmin, isAdmin, isCustomer } = useAuth();
+  const [splashDone, setSplashDone] = React.useState(false);
+  const splashStartedAt = React.useRef(Date.now());
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#1a7f4b" />
-      </View>
-    );
+  React.useEffect(() => {
+    if (loading) {
+      setSplashDone(false);
+      splashStartedAt.current = Date.now();
+      return undefined;
+    }
+    const minMs = 1400;
+    const elapsed = Date.now() - splashStartedAt.current;
+    const timer = setTimeout(() => setSplashDone(true), Math.max(0, minMs - elapsed));
+    return () => clearTimeout(timer);
+  }, [loading]);
+
+  if (loading || !splashDone) {
+    return <SplashScreen />;
   }
 
   if (!user) return <LoginScreen />;
@@ -214,14 +343,15 @@ function AppNavigator() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppShell />
+      <ThemeProvider>
+        <AppShell />
+      </ThemeProvider>
     </AuthProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   logout: { marginRight: 16, minWidth: 56, alignItems: 'center', justifyContent: 'center' },
   logoutPressed: { opacity: 0.7 },
-  logoutText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  logoutText: { fontSize: 13, fontWeight: '600' },
 });

@@ -14,6 +14,8 @@ import adminRoutes from './routes/adminRoutes.js';
 import appRoutes from './routes/appRoutes.js';
 import logRoutes from './routes/logRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
+import homeRoutes from './routes/homeRoutes.js';
+import adminHomeRoutes from './routes/adminHomeRoutes.js';
 import webhookRoutes from './routes/webhookRoutes.js';
 import { getStorageInfo } from './services/storageService.js';
 import { isRazorpayEnabled } from './services/razorpayService.js';
@@ -48,7 +50,9 @@ export function createApp() {
   app.use('/api/app', appRoutes);
   app.use('/api/logs', logRoutes);
   app.use('/api/reports', reportRoutes);
+  app.use('/api/home', homeRoutes);
   app.use('/api/admin', adminRoutes);
+  app.use('/api/admin', adminHomeRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

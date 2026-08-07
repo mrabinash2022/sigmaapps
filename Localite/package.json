@@ -10,6 +10,8 @@
   "scripts": {
     "api": "npm run dev --workspace=@localite/api",
     "api:seed": "npm run seed --workspace=@localite/api",
+    "api:migrate": "npm run migrate --workspace=@localite/api",
+    "api:sync-demo": "npm run sync-demo --workspace=@localite/api",
     "test": "npm run test --workspace=@localite/api",
     "test:api": "npm run test --workspace=@localite/api",
     "test:api:ci": "npm run test:ci --workspace=@localite/api",

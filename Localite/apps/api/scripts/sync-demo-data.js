@@ -1,8 +1,12 @@
 import { loadEnv } from '../src/config/loadEnv.js';
-import sequelize from '../src/database.js';import { Area, Shop, ShopUser, User } from '../src/models/index.js';
+import sequelize from '../src/database.js';
+import '../src/models/index.js';
+import { Area, Shop, ShopUser, User } from '../src/models/index.js';
 import { ShopOperationalStatus, ShopStatus, UserAccountStatus, UserRole } from '@localite/shared';
 import { hashPassword } from '../src/services/cryptoService.js';
 import { linkShopOwner, syncShopOwnerUsers } from '../src/services/shopService.js';
+import { migrateHomeSchema } from '../src/services/homeSchemaMigration.js';
+import { seedHomeDemoData } from '../src/seeders/homeSeed.js';
 
 loadEnv();
 
@@ -94,7 +98,7 @@ async function syncDemoShopkeeper(shopAdmin, superAdmin) {
   const area = await Area.findOne({ where: { name: 'Pimple Saudagar' } });
   if (!area) {
     console.warn('No Pimple Saudagar area found — run seed first');
-    return;
+    return null;
   }
 
   const demoShop = await Shop.findOne({
@@ -106,7 +110,7 @@ async function syncDemoShopkeeper(shopAdmin, superAdmin) {
 
   if (!demoShop) {
     console.warn('No shop found to link demo shopkeeper');
-    return;
+    return area;
   }
 
   await demoShop.update({ phone: shopAdmin.phone, ownerName: shopAdmin.name });
@@ -116,16 +120,22 @@ async function syncDemoShopkeeper(shopAdmin, superAdmin) {
   }
 
   console.log(`Linked demo shopkeeper ${shopAdmin.phone} → ${demoShop.name} (${demoShop.shopCode})`);
+  return area;
 }
 
 await sequelize.authenticate();
+await migrateHomeSchema();
+console.log('Home schema migration applied');
 
 const users = {};
 for (const account of DEMO_ACCOUNTS) {
   users[account.role] = await upsertDemoUser(account);
 }
 
-await syncDemoShopkeeper(users[UserRole.ADMIN], users[UserRole.SUPER_ADMIN]);
+const area = await syncDemoShopkeeper(users[UserRole.ADMIN], users[UserRole.SUPER_ADMIN]);
+if (area) {
+  await seedHomeDemoData({ area });
+}
 
 const ownerCount = await syncShopOwnerUsers(User, Shop, ShopUser);
 console.log(`Synced ${ownerCount} shop owner user account(s).`);

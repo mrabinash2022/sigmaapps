@@ -6,13 +6,17 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "splash": {
+      "image": "./assets/localite-logo.png",
+      "resizeMode": "contain",
       "backgroundColor": "#1a7f4b"
     },
+    "icon": "./assets/localite-logo.png",
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/localite-logo.png",
         "backgroundColor": "#1a7f4b"
       }
     },

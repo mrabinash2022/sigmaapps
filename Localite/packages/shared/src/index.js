@@ -6,3 +6,4 @@ export * from './appInfo.js';
 export * from './logging.js';
 export * from './cacheUtils.js';
 export * from './reportUtils.js';
+export * from './homeUtils.js';

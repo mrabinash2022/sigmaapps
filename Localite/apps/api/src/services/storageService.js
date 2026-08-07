@@ -55,6 +55,10 @@ export async function uploadCatalogImage(file) {
   return uploadImage(file, { folder: 'catalog' });
 }
 
+export async function uploadOfferBanner(file) {
+  return uploadImage(file, { folder: 'offers' });
+}
+
 export function getStorageInfo() {
   return { provider: STORAGE_PROVIDER, localPath: LOCAL_UPLOAD_DIR };
 }

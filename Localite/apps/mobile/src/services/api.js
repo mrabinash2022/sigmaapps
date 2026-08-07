@@ -135,6 +135,39 @@ function invalidateShopCatalogCache(shopId) {
   invalidateCachePrefix('/api/shops/area/');
 }
 
+function invalidateHomeCache() {
+  invalidateCachePrefix('/api/home/');
+  invalidateCachePrefix('/api/shops/area/');
+}
+
+async function offerMutation(path, method, fields, imageUri = null) {
+  await ensureTokensLoaded();
+  const headers = {};
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+
+  let body;
+  if (imageUri) {
+    const formData = new FormData();
+    Object.entries(fields).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        formData.append(key, String(value));
+      }
+    });
+    const filename = imageUri.split('/').pop() || 'banner.jpg';
+    formData.append('banner', { uri: imageUri, name: filename, type: 'image/jpeg' });
+    body = formData;
+  } else {
+    headers['Content-Type'] = 'application/json';
+    body = JSON.stringify(fields);
+  }
+
+  const res = await fetch(`${API_URL}${path}`, { method, headers, body });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Offer request failed');
+  invalidateHomeCache();
+  return data;
+}
+
 function invalidateAreasCache() {
   invalidateCacheKey('/api/areas');
 }
@@ -463,6 +496,71 @@ export const api = {
 
   getOrderReportExportUrl: ({ preset = 'week', from, to, shopId, format = 'xlsx' } = {}) =>
     `${API_URL}/api/reports/orders/export${buildQuery({ preset, from, to, shopId, format })}`,
+
+  // Home & storefront
+  getCustomerHome: ({ force = false } = {}) =>
+    requestCached('/api/home/customer', MobileCacheTTL.HOME_MS, { force }),
+  getShopkeeperHome: ({ force = false } = {}) =>
+    requestCached('/api/home/shopkeeper', MobileCacheTTL.HOME_MS, { force }),
+  getSuperAdminHome: ({ force = false } = {}) =>
+    requestCached('/api/home/super-admin', MobileCacheTTL.HOME_MS, { force }),
+  getFavoriteShopIds: () => request('/api/home/favorites'),
+  addFavoriteShop: (shopId) =>
+    mutateAndInvalidate(`/api/home/favorites/${shopId}`, { method: 'POST' }, invalidateHomeCache),
+  removeFavoriteShop: (shopId) =>
+    mutateAndInvalidate(`/api/home/favorites/${shopId}`, { method: 'DELETE' }, invalidateHomeCache),
+
+  getShopStoreInfo: (shopId) => request(`/api/shops/my/${shopId}/store-info`),
+  updateShopStoreInfo: (shopId, body) =>
+    mutateAndInvalidate(
+      `/api/shops/my/${shopId}/store-info`,
+      { method: 'PUT', body: JSON.stringify(body) },
+      invalidateHomeCache,
+    ),
+
+  getShopOffers: (shopId) => request(`/api/shops/my/${shopId}/offers`),
+  createShopOffer: (shopId, fields, imageUri = null) =>
+    offerMutation(`/api/shops/my/${shopId}/offers`, 'POST', fields, imageUri),
+  updateShopOffer: (shopId, offerId, fields, imageUri = null) =>
+    offerMutation(`/api/shops/my/${shopId}/offers/${offerId}`, 'PATCH', fields, imageUri),
+  deleteShopOffer: (shopId, offerId) =>
+    mutateAndInvalidate(
+      `/api/shops/my/${shopId}/offers/${offerId}`,
+      { method: 'DELETE' },
+      invalidateHomeCache,
+    ),
+
+  getPlatformOffers: () => request('/api/admin/platform-offers'),
+  createPlatformOffer: (fields, imageUri = null) =>
+    offerMutation('/api/admin/platform-offers', 'POST', fields, imageUri),
+  updatePlatformOffer: (offerId, fields, imageUri = null) =>
+    offerMutation(`/api/admin/platform-offers/${offerId}`, 'PATCH', fields, imageUri),
+  deletePlatformOffer: (offerId) =>
+    mutateAndInvalidate(
+      `/api/admin/platform-offers/${offerId}`,
+      { method: 'DELETE' },
+      invalidateHomeCache,
+    ),
+
+  getAnnouncements: () => request('/api/admin/announcements'),
+  createAnnouncement: (body) =>
+    mutateAndInvalidate(
+      '/api/admin/announcements',
+      { method: 'POST', body: JSON.stringify(body) },
+      invalidateHomeCache,
+    ),
+  updateAnnouncement: (id, body) =>
+    mutateAndInvalidate(
+      `/api/admin/announcements/${id}`,
+      { method: 'PATCH', body: JSON.stringify(body) },
+      invalidateHomeCache,
+    ),
+  deleteAnnouncement: (id) =>
+    mutateAndInvalidate(
+      `/api/admin/announcements/${id}`,
+      { method: 'DELETE' },
+      invalidateHomeCache,
+    ),
 
   // Super admin
   getPendingShops: ({ page = 1, limit = PAGE_LIMIT } = {}) =>

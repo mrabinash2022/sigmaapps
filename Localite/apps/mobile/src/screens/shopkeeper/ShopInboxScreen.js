@@ -11,6 +11,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { ShopOperationalStatus, PaymentStatus, formatOrderItemsSummary } from '@localite/shared';
 import { api } from '../../services/api';
+import { useTheme } from '../../context/ThemeContext';
 import ScreenLayout from '../../components/ScreenLayout';
 import { OrderSupportButton } from '../../components/OrderSupportButton';
 import {
@@ -53,7 +54,7 @@ function formatAmount(amount) {
   return Number.isFinite(n) ? `₹${n.toFixed(2)}` : '—';
 }
 
-function QueueSummaryBar({ summary }) {
+function QueueSummaryBar({ summary, styles }) {
   if (summary.active === 0) {
     return (
       <View style={styles.summaryBar}>
@@ -77,7 +78,7 @@ function QueueSummaryBar({ summary }) {
   );
 }
 
-function OrderQueueCard({ item, position, showPosition, onPress }) {
+function OrderQueueCard({ item, position, showPosition, onPress, styles }) {
   const paymentStatusColor = PAYMENT_STATUS_COLORS[item.paymentStatus] || '#999';
   const orderStatusColor = ORDER_STATUS_COLORS[item.orderStatus] || '#999';
 
@@ -131,6 +132,8 @@ function OrderQueueCard({ item, position, showPosition, onPress }) {
 }
 
 export default function ShopInboxScreen({ navigation }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [shopId, setShopId] = useState(null);
   const [shopName, setShopName] = useState('');
   const [shopStatus, setShopStatus] = useState(null);
@@ -192,7 +195,11 @@ export default function ShopInboxScreen({ navigation }) {
   const summary = useMemo(() => getQueueSummary(orders), [orders]);
 
   if (loading) {
-    return <View style={styles.center}><ActivityIndicator size="large" color="#1a7f4b" /></View>;
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={colors.brand} />
+      </View>
+    );
   }
 
   if (invitedShop && !shopId) {
@@ -238,7 +245,7 @@ export default function ShopInboxScreen({ navigation }) {
         <Text style={styles.heading}>{shopName}</Text>
         <Text style={styles.sub}>Order queue</Text>
 
-        <QueueSummaryBar summary={summary} />
+        <QueueSummaryBar summary={summary} styles={styles} />
 
         <View style={styles.filterRow}>
           <TouchableOpacity
@@ -258,7 +265,14 @@ export default function ShopInboxScreen({ navigation }) {
         <SectionList
           sections={sections}
           keyExtractor={(item) => item.id}
-          refreshControl={<RefreshControl refreshing={loading} onRefresh={() => load(true)} />}
+          refreshControl={(
+            <RefreshControl
+              refreshing={loading}
+              onRefresh={() => load(true)}
+              tintColor={colors.brand}
+              colors={[colors.brand]}
+            />
+          )}
           contentContainerStyle={{ paddingBottom: 24 }}
           stickySectionHeadersEnabled
           ListEmptyComponent={
@@ -279,6 +293,7 @@ export default function ShopInboxScreen({ navigation }) {
               position={index + 1}
               showPosition={section.showPosition}
               onPress={() => navigation.navigate('ManageOrder', { orderId: item.id })}
+              styles={styles}
             />
           )}
         />
@@ -287,74 +302,76 @@ export default function ShopInboxScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#f8faf9' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  heading: { fontSize: 22, fontWeight: '700' },
-  title: { fontSize: 20, fontWeight: '700', marginBottom: 8, textAlign: 'center' },
-  sub: { fontSize: 14, color: '#666', marginBottom: 12 },
-  empty: { textAlign: 'center', color: '#999', fontSize: 16, marginTop: 24 },
-  hint: { textAlign: 'center', color: '#666', marginTop: 8, fontSize: 14, lineHeight: 20 },
-  actionBtn: { marginTop: 20, backgroundColor: '#1a7f4b', paddingHorizontal: 20, paddingVertical: 14, borderRadius: 10 },
-  actionText: { color: '#fff', fontWeight: '700' },
-  summaryBar: {
-    backgroundColor: '#e8f5ee',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#c8e6d4',
-  },
-  summaryTitle: { fontSize: 13, fontWeight: '800', color: '#1a7f4b', textTransform: 'uppercase', marginBottom: 4 },
-  summaryText: { fontSize: 15, fontWeight: '700', color: '#14532d' },
-  summaryHint: { fontSize: 12, color: '#166534', marginTop: 4 },
-  filterRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  filterChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#fff',
-  },
-  filterChipActive: { backgroundColor: '#1a7f4b', borderColor: '#1a7f4b' },
-  filterText: { fontSize: 13, fontWeight: '600', color: '#666' },
-  filterTextActive: { color: '#fff' },
-  sectionHeader: {
-    backgroundColor: '#f8faf9',
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: '#333' },
-  sectionSubtitle: { fontSize: 12, color: '#888', marginTop: 2 },
-  sectionCount: { fontSize: 11, fontWeight: '700', color: '#1a7f4b', marginTop: 4 },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#eee',
-  },
-  cardTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
-  cardTitleRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  queueBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#1a7f4b',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  queueBadgeText: { color: '#fff', fontWeight: '800', fontSize: 13 },
-  customer: { fontSize: 15, fontWeight: '700' },
-  phone: { fontSize: 13, color: '#666', marginTop: 2 },
-  placedAt: { fontSize: 12, color: '#999', marginTop: 8 },
-  metaRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
-  metaItem: { flex: 1 },
-  metaLabel: { fontSize: 10, fontWeight: '700', color: '#888', textTransform: 'uppercase', marginBottom: 4 },
-  badge: { paddingHorizontal: 6, paddingVertical: 4, borderRadius: 6, alignSelf: 'flex-start' },
-  badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
-  amount: { fontSize: 14, fontWeight: '800', color: '#1a7f4b' },
-  preview: { fontSize: 13, color: '#666', marginTop: 8 },
-});
+function createStyles(colors) {
+  return StyleSheet.create({
+    container: { flex: 1, padding: 16, backgroundColor: colors.background },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: colors.background },
+    heading: { fontSize: 22, fontWeight: '700', color: colors.text },
+    title: { fontSize: 20, fontWeight: '700', marginBottom: 8, textAlign: 'center', color: colors.text },
+    sub: { fontSize: 14, color: colors.textSecondary, marginBottom: 12 },
+    empty: { textAlign: 'center', color: colors.textMuted, fontSize: 16, marginTop: 24 },
+    hint: { textAlign: 'center', color: colors.textSecondary, marginTop: 8, fontSize: 14, lineHeight: 20 },
+    actionBtn: { marginTop: 20, backgroundColor: colors.brandDark, paddingHorizontal: 20, paddingVertical: 14, borderRadius: 10 },
+    actionText: { color: '#fff', fontWeight: '700' },
+    summaryBar: {
+      backgroundColor: colors.accentSurface,
+      borderRadius: 12,
+      padding: 14,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: colors.brandBorder,
+    },
+    summaryTitle: { fontSize: 13, fontWeight: '800', color: colors.brand, textTransform: 'uppercase', marginBottom: 4 },
+    summaryText: { fontSize: 15, fontWeight: '700', color: colors.text },
+    summaryHint: { fontSize: 12, color: colors.textSecondary, marginTop: 4 },
+    filterRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+    filterChip: {
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      backgroundColor: colors.card,
+    },
+    filterChipActive: { backgroundColor: colors.brandDark, borderColor: colors.brandDark },
+    filterText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+    filterTextActive: { color: '#fff' },
+    sectionHeader: {
+      backgroundColor: colors.background,
+      paddingTop: 12,
+      paddingBottom: 8,
+    },
+    sectionTitle: { fontSize: 16, fontWeight: '800', color: colors.text },
+    sectionSubtitle: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+    sectionCount: { fontSize: 11, fontWeight: '700', color: colors.brand, marginTop: 4 },
+    card: {
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    cardTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
+    cardTitleRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
+    queueBadge: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.brandDark,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    queueBadgeText: { color: '#fff', fontWeight: '800', fontSize: 13 },
+    customer: { fontSize: 15, fontWeight: '700', color: colors.text },
+    phone: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+    placedAt: { fontSize: 12, color: colors.textMuted, marginTop: 8 },
+    metaRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
+    metaItem: { flex: 1 },
+    metaLabel: { fontSize: 10, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', marginBottom: 4 },
+    badge: { paddingHorizontal: 6, paddingVertical: 4, borderRadius: 6, alignSelf: 'flex-start' },
+    badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+    amount: { fontSize: 14, fontWeight: '800', color: colors.brand },
+    preview: { fontSize: 13, color: colors.textSecondary, marginTop: 8 },
+  });
+}

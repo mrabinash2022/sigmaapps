@@ -9,6 +9,7 @@ export const MobileCacheTTL = {
   MY_ORDERS_MS: 30 * 1000,
   SHOP_ORDERS_MS: 30 * 1000,
   ORDER_DETAIL_MS: 15 * 1000,
+  HOME_MS: 60 * 1000,
 };
 
 export async function cachedFetch(key, ttlMs, fetcher, { force = false } = {}) {

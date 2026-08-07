@@ -91,3 +91,26 @@ export const ORDER_TRANSITIONS = {
   [OrderStatus.RETURNED]: [],
   [OrderStatus.BACKORDER_WAITING]: [OrderStatus.ACCEPTED, OrderStatus.REJECTED],
 };
+
+export const OfferScope = {
+  SHOP: 'shop',
+  PLATFORM: 'platform',
+};
+
+export const OfferAudience = {
+  CUSTOMERS: 'customers',
+  SHOPKEEPERS: 'shopkeepers',
+  ALL: 'all',
+};
+
+export const DiscountType = {
+  PERCENT: 'percent',
+  FLAT: 'flat',
+  TEXT: 'text',
+};
+
+export const AnnouncementAudience = {
+  SHOPKEEPERS: 'shopkeepers',
+  CUSTOMERS: 'customers',
+  ALL: 'all',
+};

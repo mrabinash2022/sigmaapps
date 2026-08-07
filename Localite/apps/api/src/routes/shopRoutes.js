@@ -7,6 +7,8 @@ import { isShopPubliclyListed } from '@localite/shared';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import { getShopCatalog } from '../services/catalogService.js';
 import catalogManageRoutes from './catalogManageRoutes.js';
+import shopHomeManageRoutes from './shopHomeManageRoutes.js';
+import { attachShopPublicInfo } from '../services/homeService.js';
 import { linkInvitedShopToUser, allocateShopCode, shopCodeForName, findShopsForAdmin } from '../services/shopService.js';
 import { notifySuperAdminsNewShopRequest } from '../services/shopNotificationService.js';
 import { parsePagination, paginatedResponse } from '../utils/pagination.js';
@@ -15,6 +17,7 @@ import { cacheKey, CacheTTL, getCached } from '../services/cacheService.js';
 const router = Router();
 
 router.use(catalogManageRoutes);
+router.use(shopHomeManageRoutes);
 
 router.get('/area/:areaId', async (req, res, next) => {
   try {
@@ -65,7 +68,8 @@ router.get('/area/:areaId', async (req, res, next) => {
         catalogItemCount: catalogCounts[shop.id] || 0,
       }));
 
-      return paginatedResponse(items, { total: count, page, limit });
+      const enriched = await attachShopPublicInfo(items);
+      return paginatedResponse(enriched, { total: count, page, limit });
     });
 
     res.json(payload);

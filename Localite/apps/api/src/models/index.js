@@ -10,6 +10,10 @@ import ShopCatalogItem from './ShopCatalogItem.js';
 import OtpSession from './OtpSession.js';
 import RefreshToken from './RefreshToken.js';
 import UserDevice from './UserDevice.js';
+import ShopStoreInfo from './ShopStoreInfo.js';
+import Offer from './Offer.js';
+import PlatformAnnouncement from './PlatformAnnouncement.js';
+import CustomerFavoriteShop from './CustomerFavoriteShop.js';
 
 // Area ↔ Shop
 Area.hasMany(Shop, { foreignKey: 'areaId', as: 'shops' });
@@ -71,6 +75,33 @@ RefreshToken.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 User.hasMany(UserDevice, { foreignKey: 'userId', as: 'devices' });
 UserDevice.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
+// Store info & offers
+Shop.hasOne(ShopStoreInfo, { foreignKey: 'shopId', as: 'storeInfo' });
+ShopStoreInfo.belongsTo(Shop, { foreignKey: 'shopId', as: 'shop' });
+
+Shop.hasMany(Offer, { foreignKey: 'shopId', as: 'offers' });
+Offer.belongsTo(Shop, { foreignKey: 'shopId', as: 'shop' });
+User.hasMany(Offer, { foreignKey: 'createdById', as: 'createdOffers' });
+Offer.belongsTo(User, { foreignKey: 'createdById', as: 'createdBy' });
+
+User.hasMany(PlatformAnnouncement, { foreignKey: 'createdById', as: 'announcements' });
+PlatformAnnouncement.belongsTo(User, { foreignKey: 'createdById', as: 'createdBy' });
+
+User.belongsToMany(Shop, {
+  through: CustomerFavoriteShop,
+  foreignKey: 'userId',
+  otherKey: 'shopId',
+  as: 'favoriteShops',
+});
+Shop.belongsToMany(User, {
+  through: CustomerFavoriteShop,
+  foreignKey: 'shopId',
+  otherKey: 'userId',
+  as: 'favoritedBy',
+});
+CustomerFavoriteShop.belongsTo(Shop, { foreignKey: 'shopId', as: 'shop' });
+CustomerFavoriteShop.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
 export {
   Area,
   Shop,
@@ -84,4 +115,8 @@ export {
   OtpSession,
   RefreshToken,
   UserDevice,
+  ShopStoreInfo,
+  Offer,
+  PlatformAnnouncement,
+  CustomerFavoriteShop,
 };

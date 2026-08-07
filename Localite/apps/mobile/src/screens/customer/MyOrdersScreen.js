@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import {
   canReorderOrder,
   isDeliveredOrder,
 } from '@localite/shared';
+import { useTheme } from '../../context/ThemeContext';
 import ScreenLayout from '../../components/ScreenLayout';
 import { OrderSupportButton } from '../../components/OrderSupportButton';
 
@@ -67,6 +68,8 @@ function formatDate(value) {
 }
 
 export default function MyOrdersScreen({ navigation }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [payingId, setPayingId] = useState(null);
@@ -367,7 +370,11 @@ export default function MyOrdersScreen({ navigation }) {
   };
 
   if (loading && !orders.length) {
-    return <View style={styles.center}><ActivityIndicator size="large" color="#1a7f4b" /></View>;
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={colors.brand} />
+      </View>
+    );
   }
 
   return (
@@ -377,7 +384,14 @@ export default function MyOrdersScreen({ navigation }) {
         style={styles.list}
       data={orders}
       keyExtractor={(item) => item.id}
-      refreshControl={<RefreshControl refreshing={loading} onRefresh={() => load(true)} />}
+      refreshControl={(
+        <RefreshControl
+          refreshing={loading}
+          onRefresh={() => load(true)}
+          tintColor={colors.brand}
+          colors={[colors.brand]}
+        />
+      )}
       contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
       ListHeaderComponent={
         <View style={styles.header}>
@@ -396,56 +410,58 @@ export default function MyOrdersScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  list: { flex: 1 },
-  container: { flex: 1, backgroundColor: '#f8faf9' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { marginBottom: 8 },
-  heading: { fontSize: 20, fontWeight: '700', marginBottom: 6 },
-  sub: { fontSize: 14, color: '#666', marginBottom: 12, lineHeight: 20 },
-  empty: { textAlign: 'center', color: '#999', marginTop: 40, lineHeight: 22 },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#eee',
-  },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
-  shopBlock: { flex: 1 },
-  shop: { fontSize: 17, fontWeight: '700' },
-  category: { fontSize: 12, color: '#888', marginTop: 2 },
-  status: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  statusText: { color: '#fff', fontSize: 11, fontWeight: '700' },
-  date: { fontSize: 12, color: '#999', marginTop: 6, marginBottom: 10 },
-  section: { marginTop: 10 },
-  label: { fontSize: 12, fontWeight: '700', color: '#555', marginBottom: 4, textTransform: 'uppercase' },
-  body: { fontSize: 14, color: '#333', lineHeight: 20 },
-  metaRow: { flexDirection: 'row', gap: 16, marginTop: 10 },
-  metaBlock: { flex: 1 },
-  amount: { fontSize: 20, fontWeight: '800', color: '#1a7f4b' },
-  paymentBox: {
-    marginTop: 14,
-    padding: 12,
-    backgroundColor: '#f0faf4',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#c8e6d4',
-  },
-  paymentTitle: { fontSize: 14, fontWeight: '700', color: '#1a7f4b', marginBottom: 10 },
-  paymentHint: { fontSize: 13, color: '#666', marginBottom: 8 },
-  btn: {
-    backgroundColor: '#1a7f4b',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  btnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  btnOutline: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#1a7f4b' },
-  btnOutlineText: { color: '#1a7f4b' },
-  linkBtn: { marginTop: 12, alignItems: 'center', padding: 8 },
-  linkText: { color: '#1a7f4b', fontWeight: '600', fontSize: 13 },
-  rejectedText: { fontSize: 14, color: '#b91c1c', lineHeight: 20 },
-});
+function createStyles(colors) {
+  return StyleSheet.create({
+    list: { flex: 1, backgroundColor: colors.background },
+    container: { flex: 1, backgroundColor: colors.background },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
+    header: { marginBottom: 8 },
+    heading: { fontSize: 20, fontWeight: '700', marginBottom: 6, color: colors.text },
+    sub: { fontSize: 14, color: colors.textSecondary, marginBottom: 12, lineHeight: 20 },
+    empty: { textAlign: 'center', color: colors.textMuted, marginTop: 40, lineHeight: 22 },
+    card: {
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
+    shopBlock: { flex: 1 },
+    shop: { fontSize: 17, fontWeight: '700', color: colors.text },
+    category: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+    status: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+    statusText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+    date: { fontSize: 12, color: colors.textMuted, marginTop: 6, marginBottom: 10 },
+    section: { marginTop: 10 },
+    label: { fontSize: 12, fontWeight: '700', color: colors.textSecondary, marginBottom: 4, textTransform: 'uppercase' },
+    body: { fontSize: 14, color: colors.text, lineHeight: 20 },
+    metaRow: { flexDirection: 'row', gap: 16, marginTop: 10 },
+    metaBlock: { flex: 1 },
+    amount: { fontSize: 20, fontWeight: '800', color: colors.brand },
+    paymentBox: {
+      marginTop: 14,
+      padding: 12,
+      backgroundColor: colors.accentSurface,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.brandBorder,
+    },
+    paymentTitle: { fontSize: 14, fontWeight: '700', color: colors.brand, marginBottom: 10 },
+    paymentHint: { fontSize: 13, color: colors.textSecondary, marginBottom: 8 },
+    btn: {
+      backgroundColor: colors.brandDark,
+      padding: 12,
+      borderRadius: 8,
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    btnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+    btnOutline: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.brand },
+    btnOutlineText: { color: colors.brand },
+    linkBtn: { marginTop: 12, alignItems: 'center', padding: 8 },
+    linkText: { color: colors.brand, fontWeight: '600', fontSize: 13 },
+    rejectedText: { fontSize: 14, color: '#f87171', lineHeight: 20 },
+  });
+}
