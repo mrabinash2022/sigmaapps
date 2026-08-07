@@ -1,0 +1,23 @@
+appId: host.exp.exponent
+---
+- runFlow: subflows/login-customer.yaml
+- tapOn:
+    id: tab-stores
+- extendedWaitUntil:
+    visible: "LifeCare Pharmacy"
+    timeout: 15000
+- tapOn: "LifeCare Pharmacy"
+- extendedWaitUntil:
+    visible:
+      id: order-text-input
+    timeout: 10000
+- tapOn:
+    id: order-text-input
+- inputText: ${ORDER_TEXT}
+- hideKeyboard
+- tapOn:
+    id: place-order-submit
+- extendedWaitUntil:
+    visible: "Order placed!"
+    timeout: 15000
+- tapOn: "OK"

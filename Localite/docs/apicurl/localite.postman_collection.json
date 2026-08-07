@@ -23,10 +23,73 @@
       "name": "Auth",
       "item": [
         {
+          "name": "Captcha",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/captcha",
+            "description": ""
+          }
+        },
+        {
+          "name": "Send Email Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/register/send-email-code",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Verify Email Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/register/verify-email-code",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"code\": \"123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
           "name": "Register (Customer)",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/auth/register/password",
             "description": "",
             "body": {
@@ -59,7 +122,13 @@
           "name": "Login (Super Admin)",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/auth/login/password",
             "description": "",
             "body": {
@@ -92,7 +161,13 @@
           "name": "Login (Shop Admin)",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/auth/login/password",
             "description": "",
             "body": {
@@ -125,7 +200,13 @@
           "name": "Login (Customer)",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/auth/login/password",
             "description": "",
             "body": {
@@ -158,7 +239,13 @@
           "name": "Send OTP",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/auth/send-otp",
             "description": "",
             "body": {
@@ -176,7 +263,13 @@
           "name": "Verify OTP",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/auth/verify-otp",
             "description": "",
             "body": {
@@ -209,7 +302,13 @@
           "name": "Refresh Token",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/auth/refresh",
             "description": "",
             "body": {
@@ -283,6 +382,31 @@
                   "language": "json"
                 }
               }
+            }
+          }
+        },
+        {
+          "name": "Upload Profile Picture",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/profile/picture",
+            "description": "",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "picture",
+                  "type": "file",
+                  "src": []
+                }
+              ]
             }
           }
         },
@@ -439,7 +563,7 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/shops/area/{{areaId}}",
+            "url": "{{baseUrl}}/api/shops/area/{{areaId}}?page=1&limit=20",
             "description": ""
           }
         },
@@ -449,6 +573,15 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/shops/{{shopId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "Get Shop Catalog",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/shops/{{shopId}}/catalog",
             "description": ""
           }
         },
@@ -557,6 +690,165 @@
       ]
     },
     {
+      "name": "Catalog (Shopkeeper)",
+      "item": [
+        {
+          "name": "Manage Catalog",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/shops/my/{{shopId}}/catalog/manage",
+            "description": ""
+          }
+        },
+        {
+          "name": "Create Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/shops/my/{{shopId}}/catalog/items",
+            "description": "",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Red Rose Bouquet",
+                  "type": "text"
+                },
+                {
+                  "key": "itemGroup",
+                  "value": "flowers",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "299",
+                  "type": "text"
+                },
+                {
+                  "key": "publish",
+                  "value": "true",
+                  "type": "text"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Item",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/shops/my/{{shopId}}/catalog/items/{{itemId}}",
+            "description": "",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Updated Bouquet",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "349",
+                  "type": "text"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Publish Item",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/shops/my/{{shopId}}/catalog/items/{{itemId}}/publish",
+            "description": ""
+          }
+        },
+        {
+          "name": "Unpublish Item",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/shops/my/{{shopId}}/catalog/items/{{itemId}}/unpublish",
+            "description": ""
+          }
+        },
+        {
+          "name": "Delete Item",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/shops/my/{{shopId}}/catalog/items/{{itemId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "Enable Visual Catalog",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/shops/my/{{shopId}}/visual-catalog",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Orders",
       "item": [
         {
@@ -571,7 +863,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/orders/submit-flexible-order",
-            "description": "Add image file field for photo orders",
+            "description": "",
             "body": {
               "mode": "formdata",
               "formdata": [
@@ -587,6 +879,45 @@
                 }
               ]
             }
+          }
+        },
+        {
+          "name": "Submit Catalog Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/orders/submit-catalog-order",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shopId\": \"{{shopId}}\",\n  \"items\": [\n    {\n      \"catalogItemId\": \"{{itemId}}\",\n      \"name\": \"Product\",\n      \"quantity\": 1,\n      \"unitPrice\": 100\n    }\n  ],\n  \"note\": \"Deliver by 6 PM\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Reorder",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/orders/reorder/{{orderId}}",
+            "description": ""
           }
         },
         {
@@ -650,6 +981,78 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"finalBillAmount\": 450,\n  \"deliveryTimeWindow\": \"Today 6-8 PM\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Accept Partial + Backorder",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/orders/transition/accept/{{orderId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"finalBillAmount\": 380,\n  \"deliveryTimeWindow\": \"Today 6-8 PM\",\n  \"createBackorder\": true,\n  \"fulfillment\": {\n    \"shopNote\": \"Partial stock\",\n    \"lines\": []\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Backorder Ready",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/orders/transition/backorder-ready/{{orderId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"finalBillAmount\": 260,\n  \"deliveryTimeWindow\": \"Tomorrow morning\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Reject Order",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/orders/transition/reject/{{orderId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Out of stock\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -789,6 +1192,113 @@
             "url": "{{baseUrl}}/api/orders/transition/deliver/{{orderId}}",
             "description": ""
           }
+        },
+        {
+          "name": "Return Order",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/orders/transition/return/{{orderId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Wrong items\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Refund Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/orders/transition/refund/{{orderId}}",
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "App",
+      "item": [
+        {
+          "name": "App Info",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/app/info",
+            "description": ""
+          }
+        },
+        {
+          "name": "Send Referral",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/app/refer",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9876543210\",\n  \"email\": \"friend@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Submit Client Logs",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/logs/client",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"logs\": [\n    {\n      \"level\": \"info\",\n      \"message\": \"Test log\",\n      \"platform\": \"android\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
         }
       ]
     },
@@ -922,6 +1432,30 @@
           }
         },
         {
+          "name": "Update Shop",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/shops/{{shopId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Quick Mart Updated\",\n  \"phone\": \"9876543210\",\n  \"rank\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
           "name": "Enable Shop",
           "request": {
             "method": "PATCH",
@@ -1043,7 +1577,94 @@
                 "type": "text"
               }
             ],
+            "url": "{{baseUrl}}/api/admin/users?page=1&limit=20",
+            "description": ""
+          }
+        },
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/admin/users",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Customer\",\n  \"phone\": \"7777777771\",\n  \"password\": \"Customer@123\",\n  \"role\": \"customer\",\n  \"areaId\": \"{{areaId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/users/{{userId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"address\": \"New address\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Set User Account Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/users/{{userId}}/account-status",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountStatus\": \"disabled\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/users/{{userId}}",
             "description": ""
           }
         },
@@ -1116,6 +1737,45 @@
           }
         },
         {
+          "name": "Order Tickets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/support/order/{{orderId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "Add Ticket Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/support/tickets/{{ticketId}}/messages",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Follow-up message\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
           "name": "Shop Active Tickets",
           "request": {
             "method": "GET",
@@ -1163,7 +1823,13 @@
           "name": "Razorpay Webhook",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/webhooks/razorpay",
             "description": "Requires x-razorpay-signature header",
             "body": {

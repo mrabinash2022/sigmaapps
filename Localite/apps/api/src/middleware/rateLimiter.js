@@ -1,6 +1,7 @@
 import rateLimit from 'express-rate-limit';
 
-const isDev = process.env.NODE_ENV === 'development';
+const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+const skipRateLimit = () => process.env.DISABLE_AUTH_RATE_LIMIT === 'true';
 
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -8,7 +9,7 @@ export const authLimiter = rateLimit({
   message: { error: 'Too many auth attempts. Try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: () => isDev && process.env.DISABLE_AUTH_RATE_LIMIT === 'true',
+  skip: skipRateLimit,
 });
 
 export const otpLimiter = rateLimit({
@@ -16,5 +17,5 @@ export const otpLimiter = rateLimit({
   max: isDev ? 100 : 3,
   message: { error: 'Too many OTP requests. Wait a minute.' },
   keyGenerator: (req) => req.body.phone || req.ip,
-  skip: () => isDev && process.env.DISABLE_AUTH_RATE_LIMIT === 'true',
+  skip: skipRateLimit,
 });

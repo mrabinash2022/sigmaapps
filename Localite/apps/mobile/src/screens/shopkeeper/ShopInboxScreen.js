@@ -234,7 +234,7 @@ export default function ShopInboxScreen({ navigation }) {
 
   return (
     <ScreenLayout>
-      <View style={styles.container}>
+      <View style={styles.container} testID="shop-inbox">
         <Text style={styles.heading}>{shopName}</Text>
         <Text style={styles.sub}>Order queue</Text>
 

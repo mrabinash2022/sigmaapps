@@ -9,6 +9,7 @@ export default function OrderListTextInput({
   accent = '#1a7f4b',
   minHeight = 120,
   showVoiceHint = true,
+  testID,
 }) {
   const handleAppend = useCallback((spoken) => {
     onChangeText(appendTranscript(value, spoken));
@@ -22,6 +23,7 @@ export default function OrderListTextInput({
     <View style={styles.wrap}>
       <View style={styles.inputRow}>
         <TextInput
+          testID={testID}
           style={[styles.textArea, { minHeight, borderColor: listening ? accent : '#ddd' }]}
           multiline
           numberOfLines={5}

@@ -7,6 +7,7 @@ export REFRESH_TOKEN=""
 export AREA_ID=""
 export SHOP_ID=""
 export ORDER_ID=""
+export ITEM_ID=""
 export USER_ID=""
 export TICKET_ID=""
 

@@ -63,6 +63,26 @@ curl -s -X PATCH "$BASE_URL/api/support/update-ticket/$TICKET_ID" \
 
 ---
 
+## Get tickets for an order
+
+```bash
+curl -s "$BASE_URL/api/support/order/$ORDER_ID" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+```
+
+---
+
+## Add message to ticket
+
+```bash
+curl -s -X POST "$BASE_URL/api/support/tickets/$TICKET_ID/messages" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Customer follow-up: please call me"}' | jq .
+```
+
+---
+
 ## Razorpay webhook
 
 Called by Razorpay servers (not for manual testing without valid signature).

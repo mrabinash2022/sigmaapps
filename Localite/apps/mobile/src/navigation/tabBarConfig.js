@@ -34,13 +34,15 @@ export function AppTabBarButton(props) {
   );
 }
 
-export function buildTabOptions({ label, title, iconActive, iconInactive }) {
+export function buildTabOptions({ label, title, iconActive, iconInactive, testID }) {
   return {
     title,
+    tabBarTestID: testID,
     tabBarLabel: ({ focused }) => <TabLabel label={label} focused={focused} />,
     tabBarIcon: ({ focused }) => (
       <AppTabIcon name={focused ? iconActive : iconInactive} focused={focused} />
     ),
+    tabBarButton: (props) => <AppTabBarButton {...props} testID={testID} />,
   };
 }
 

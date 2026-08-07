@@ -1,0 +1,9 @@
+appId: host.exp.exponent
+---
+- runFlow: subflows/login-customer.yaml
+- extendedWaitUntil:
+    visible:
+      id: my-orders-screen
+    timeout: 15000
+- assertVisible:
+    id: my-orders-screen

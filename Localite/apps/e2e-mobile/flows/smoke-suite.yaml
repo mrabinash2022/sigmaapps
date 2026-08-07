@@ -1,0 +1,5 @@
+appId: host.exp.exponent
+---
+- runFlow: 01-browse-shops.yaml
+- runFlow: 02-place-text-order.yaml
+- runFlow: 04-customer-orders-tab.yaml

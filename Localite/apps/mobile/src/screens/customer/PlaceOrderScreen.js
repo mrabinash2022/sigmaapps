@@ -53,6 +53,7 @@ export default function PlaceOrderScreen({ route, navigation }) {
       <Text style={styles.hint}>Write what you need — type, speak into the mic, or upload a photo.</Text>
 
       <OrderListTextInput
+        testID="order-text-input"
         value={text}
         onChangeText={setText}
         placeholder="e.g. 500g besan ladoo, 2 boxes kaju katli, 1kg mixed namkeen..."
@@ -65,7 +66,7 @@ export default function PlaceOrderScreen({ route, navigation }) {
 
       {imageUri && <Image source={{ uri: imageUri }} style={styles.preview} />}
 
-      <TouchableOpacity style={styles.submitBtn} onPress={submit} disabled={submitting}>
+      <TouchableOpacity style={styles.submitBtn} onPress={submit} disabled={submitting} testID="place-order-submit">
         <Text style={styles.submitText}>{submitting ? 'Placing order...' : 'Place Order'}</Text>
       </TouchableOpacity>
       </ScrollView>

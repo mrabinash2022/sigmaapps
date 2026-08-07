@@ -8,6 +8,36 @@ Set `BASE_URL` and `ACCESS_TOKEN` first (see [README](README.md)).
 curl -s "$BASE_URL/api/health" | jq .
 ```
 
+Returns `status`, `storage`, and `razorpay` enabled flag.
+
+---
+
+## Captcha (register flow)
+
+```bash
+curl -s "$BASE_URL/api/auth/captcha" | jq .
+```
+
+---
+
+## Register email verification
+
+Send code:
+
+```bash
+curl -s -X POST "$BASE_URL/api/auth/register/send-email-code" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com"}' | jq .
+```
+
+Verify code:
+
+```bash
+curl -s -X POST "$BASE_URL/api/auth/register/verify-email-code" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","code":"123456"}' | jq .
+```
+
 ---
 
 ## Register (password)
@@ -128,6 +158,16 @@ curl -s -X PATCH "$BASE_URL/api/auth/profile" \
     "address": "123 Main St",
     "email": "user@example.com"
   }' | jq .
+```
+
+---
+
+## Upload profile picture
+
+```bash
+curl -s -X POST "$BASE_URL/api/auth/profile/picture" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -F "picture=@/path/to/photo.jpg" | jq .
 ```
 
 ---
