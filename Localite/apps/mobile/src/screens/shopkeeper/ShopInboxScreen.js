@@ -140,7 +140,7 @@ export default function ShopInboxScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
 
-  const load = async () => {
+  const load = async (force = false) => {
     setLoading(true);
     try {
       const [{ shops }, inviteRes] = await Promise.all([
@@ -163,7 +163,7 @@ export default function ShopInboxScreen({ navigation }) {
         setShopStatus(activeShop.status);
         setOperationalStatus(activeShop.operationalStatus);
         if (approved) {
-          const { orders: o } = await api.getShopOrders(activeShop.id);
+          const { orders: o } = await api.getShopOrders(activeShop.id, { force });
           setOrders(o);
         } else {
           setOrders([]);
@@ -258,7 +258,7 @@ export default function ShopInboxScreen({ navigation }) {
         <SectionList
           sections={sections}
           keyExtractor={(item) => item.id}
-          refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={() => load(true)} />}
           contentContainerStyle={{ paddingBottom: 24 }}
           stickySectionHeadersEnabled
           ListEmptyComponent={

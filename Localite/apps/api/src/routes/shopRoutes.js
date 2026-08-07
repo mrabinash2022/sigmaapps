@@ -10,6 +10,7 @@ import catalogManageRoutes from './catalogManageRoutes.js';
 import { linkInvitedShopToUser, allocateShopCode, shopCodeForName, findShopsForAdmin } from '../services/shopService.js';
 import { notifySuperAdminsNewShopRequest } from '../services/shopNotificationService.js';
 import { parsePagination, paginatedResponse } from '../utils/pagination.js';
+import { cacheKey, CacheTTL, getCached } from '../services/cacheService.js';
 
 const router = Router();
 
@@ -19,46 +20,55 @@ router.get('/area/:areaId', async (req, res, next) => {
   try {
     const { category } = req.query;
     const { page, limit, offset } = parsePagination(req);
-    const where = {
-      areaId: req.params.areaId,
-      status: ShopStatus.APPROVED,
-      operationalStatus: ShopOperationalStatus.ENABLED,
-      isVerified: true,
-    };
-    if (category) where.category = category;
+    const listKey = cacheKey(
+      'shops', 'area', req.params.areaId,
+      category || 'all', String(page), String(limit),
+    );
 
-    const { rows, count } = await Shop.findAndCountAll({
-      where,
-      order: [['rank', 'ASC'], ['name', 'ASC']],
-      attributes: { exclude: ['appliedById', 'approvedById', 'rejectionReason', 'invitedOwnerPhone'] },
-      limit,
-      offset,
+    const payload = await getCached(listKey, CacheTTL.SHOPS_BY_AREA_MS, async () => {
+      const where = {
+        areaId: req.params.areaId,
+        status: ShopStatus.APPROVED,
+        operationalStatus: ShopOperationalStatus.ENABLED,
+        isVerified: true,
+      };
+      if (category) where.category = category;
+
+      const { rows, count } = await Shop.findAndCountAll({
+        where,
+        order: [['rank', 'ASC'], ['name', 'ASC']],
+        attributes: { exclude: ['appliedById', 'approvedById', 'rejectionReason', 'invitedOwnerPhone'] },
+        limit,
+        offset,
+      });
+
+      const shopIds = rows.map((s) => s.id);
+      let catalogCounts = {};
+      if (shopIds.length) {
+        const counts = await ShopCatalogItem.findAll({
+          attributes: ['shopId', [sequelize.fn('COUNT', sequelize.col('id')), 'catalogItemCount']],
+          where: {
+            shopId: shopIds,
+            isAvailable: true,
+            publishStatus: CatalogPublishStatus.PUBLISHED,
+          },
+          group: ['shopId'],
+          raw: true,
+        });
+        catalogCounts = Object.fromEntries(
+          counts.map((row) => [row.shopId, Number(row.catalogItemCount)]),
+        );
+      }
+
+      const items = rows.map((shop) => ({
+        ...shop.toJSON(),
+        catalogItemCount: catalogCounts[shop.id] || 0,
+      }));
+
+      return paginatedResponse(items, { total: count, page, limit });
     });
 
-    const shopIds = rows.map((s) => s.id);
-    let catalogCounts = {};
-    if (shopIds.length) {
-      const counts = await ShopCatalogItem.findAll({
-        attributes: ['shopId', [sequelize.fn('COUNT', sequelize.col('id')), 'catalogItemCount']],
-        where: {
-          shopId: shopIds,
-          isAvailable: true,
-          publishStatus: CatalogPublishStatus.PUBLISHED,
-        },
-        group: ['shopId'],
-        raw: true,
-      });
-      catalogCounts = Object.fromEntries(
-        counts.map((row) => [row.shopId, Number(row.catalogItemCount)]),
-      );
-    }
-
-    const items = rows.map((shop) => ({
-      ...shop.toJSON(),
-      catalogItemCount: catalogCounts[shop.id] || 0,
-    }));
-
-    res.json(paginatedResponse(items, { total: count, page, limit }));
+    res.json(payload);
   } catch (err) {
     next(err);
   }
@@ -66,15 +76,24 @@ router.get('/area/:areaId', async (req, res, next) => {
 
 router.get('/:shopId/catalog', async (req, res, next) => {
   try {
-    const shop = await Shop.findByPk(req.params.shopId, {
-      attributes: ['id', 'name', 'category', 'status', 'operationalStatus', 'isVerified', 'visualCatalogEnabled'],
+    const { shopId } = req.params;
+    const payload = await getCached(cacheKey('catalog', shopId), CacheTTL.SHOP_CATALOG_MS, async () => {
+      const shop = await Shop.findByPk(shopId, {
+        attributes: ['id', 'name', 'category', 'status', 'operationalStatus', 'isVerified', 'visualCatalogEnabled'],
+      });
+      if (!shop || !isShopPubliclyListed(shop)) {
+        const err = new Error('Shop not found');
+        err.statusCode = 404;
+        throw err;
+      }
+      const catalog = await getShopCatalog(shop);
+      return { shop: { id: shop.id, name: shop.name, category: shop.category }, ...catalog };
     });
-    if (!shop || !isShopPubliclyListed(shop)) {
-      return res.status(404).json({ error: 'Shop not found' });
-    }
-    const catalog = await getShopCatalog(shop);
-    res.json({ shop: { id: shop.id, name: shop.name, category: shop.category }, ...catalog });
+    res.json(payload);
   } catch (err) {
+    if (err.statusCode === 404) {
+      return res.status(404).json({ error: err.message });
+    }
     next(err);
   }
 });

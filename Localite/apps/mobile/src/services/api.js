@@ -1,6 +1,13 @@
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
-import logger, { setLoggerAccessToken } from './logging/logger';
+import logger, { setLoggerAccessToken } from '../logging/logger';
+import {
+  cachedFetch,
+  clearResponseCache,
+  invalidateCacheKey,
+  invalidateCachePrefix,
+  MobileCacheTTL,
+} from './responseCache';
 
 const API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:5000';
 export const PAGE_LIMIT = 20;
@@ -38,6 +45,7 @@ export async function clearTokens() {
   accessToken = null;
   refreshToken = null;
   setLoggerAccessToken(null);
+  clearResponseCache();
   try {
     await SecureStore.deleteItemAsync('accessToken');
   } catch {
@@ -109,6 +117,29 @@ async function request(path, options = {}, retry = true) {
   return data;
 }
 
+async function requestCached(path, ttlMs, { force = false } = {}) {
+  return cachedFetch(path, ttlMs, () => request(path), { force });
+}
+
+function invalidateOrdersCache() {
+  invalidateCachePrefix('/api/orders/');
+}
+
+function invalidateShopCatalogCache(shopId) {
+  invalidateCacheKey(`/api/shops/${shopId}/catalog`);
+  invalidateCachePrefix('/api/shops/area/');
+}
+
+function invalidateAreasCache() {
+  invalidateCacheKey('/api/areas');
+}
+
+async function mutateAndInvalidate(path, options, invalidate) {
+  const data = await request(path, options);
+  invalidate?.();
+  return data;
+}
+
 async function logoutRequest(refreshTokenValue) {
   await ensureTokensLoaded();
   const headers = { 'Content-Type': 'application/json' };
@@ -169,11 +200,17 @@ export const api = {
     request('/api/auth/device/register', { method: 'POST', body: JSON.stringify({ expoPushToken, platform }) }),
 
   // Areas & Shops
-  getAreas: () => request('/api/areas'),
-  getShopsByArea: (areaId, { category, page = 1, limit = PAGE_LIMIT } = {}) =>
-    request(`/api/shops/area/${areaId}${buildQuery({ category, page, limit })}`),
+  getAreas: ({ force = false } = {}) =>
+    requestCached('/api/areas', MobileCacheTTL.AREAS_MS, { force }),
+  getShopsByArea: (areaId, { category, page = 1, limit = PAGE_LIMIT, force = false } = {}) =>
+    requestCached(
+      `/api/shops/area/${areaId}${buildQuery({ category, page, limit })}`,
+      MobileCacheTTL.SHOPS_BY_AREA_MS,
+      { force },
+    ),
   getShop: (shopId) => request(`/api/shops/${shopId}`),
-  getShopCatalog: (shopId) => request(`/api/shops/${shopId}/catalog`),
+  getShopCatalog: (shopId, { force = false } = {}) =>
+    requestCached(`/api/shops/${shopId}/catalog`, MobileCacheTTL.SHOP_CATALOG_MS, { force }),
   applyShop: (body) => request('/api/shops/apply', { method: 'POST', body: JSON.stringify(body) }),
   getMyShopApplication: () => request('/api/shops/my/application'),
 
@@ -200,6 +237,7 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed to create product');
+    invalidateShopCatalogCache(shopId);
     return data;
   },
   updateCatalogItem: async (shopId, itemId, fields, imageUri = null) => {
@@ -223,19 +261,33 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed to update product');
+    invalidateShopCatalogCache(shopId);
     return data;
   },
   publishCatalogItem: (shopId, itemId) =>
-    request(`/api/shops/my/${shopId}/catalog/items/${itemId}/publish`, { method: 'PATCH' }),
+    mutateAndInvalidate(
+      `/api/shops/my/${shopId}/catalog/items/${itemId}/publish`,
+      { method: 'PATCH' },
+      () => invalidateShopCatalogCache(shopId),
+    ),
   unpublishCatalogItem: (shopId, itemId) =>
-    request(`/api/shops/my/${shopId}/catalog/items/${itemId}/unpublish`, { method: 'PATCH' }),
+    mutateAndInvalidate(
+      `/api/shops/my/${shopId}/catalog/items/${itemId}/unpublish`,
+      { method: 'PATCH' },
+      () => invalidateShopCatalogCache(shopId),
+    ),
   deleteCatalogItem: (shopId, itemId) =>
-    request(`/api/shops/my/${shopId}/catalog/items/${itemId}`, { method: 'DELETE' }),
+    mutateAndInvalidate(
+      `/api/shops/my/${shopId}/catalog/items/${itemId}`,
+      { method: 'DELETE' },
+      () => invalidateShopCatalogCache(shopId),
+    ),
   setVisualCatalogEnabled: (shopId, enabled) =>
-    request(`/api/shops/my/${shopId}/visual-catalog`, {
-      method: 'PATCH',
-      body: JSON.stringify({ enabled }),
-    }),
+    mutateAndInvalidate(
+      `/api/shops/my/${shopId}/visual-catalog`,
+      { method: 'PATCH', body: JSON.stringify({ enabled }) },
+      () => invalidateShopCatalogCache(shopId),
+    ),
 
   // Orders
   submitOrder: async (shopId, textPayload, imageUri) => {
@@ -252,13 +304,15 @@ export const api = {
     const res = await fetch(`${API_URL}/api/orders/submit-flexible-order`, { method: 'POST', headers, body: formData });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Order failed');
+    invalidateOrdersCache();
     return data;
   },
   submitCatalogOrder: (shopId, items, note) =>
-    request('/api/orders/submit-catalog-order', {
-      method: 'POST',
-      body: JSON.stringify({ shopId, items, note }),
-    }),
+    mutateAndInvalidate(
+      '/api/orders/submit-catalog-order',
+      { method: 'POST', body: JSON.stringify({ shopId, items, note }) },
+      invalidateOrdersCache,
+    ),
   submitVisualOrder: async (shopId, { items = [], extraText = '', note = '', imageUri = null } = {}) => {
     await ensureTokensLoaded();
     const formData = new FormData();
@@ -275,59 +329,96 @@ export const api = {
     const res = await fetch(`${API_URL}/api/orders/submit-catalog-order`, { method: 'POST', headers, body: formData });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Order failed');
+    invalidateOrdersCache();
     return data;
   },
-  getMyOrders: () => request('/api/orders/my'),
-  getShopOrders: (shopId) => request(`/api/orders/shop/${shopId}`),
-  getOrder: (orderId) => request(`/api/orders/${orderId}`),
+  getMyOrders: ({ force = false } = {}) =>
+    requestCached('/api/orders/my', MobileCacheTTL.MY_ORDERS_MS, { force }),
+  getShopOrders: (shopId, { force = false } = {}) =>
+    requestCached(`/api/orders/shop/${shopId}`, MobileCacheTTL.SHOP_ORDERS_MS, { force }),
+  getOrder: (orderId, { force = false } = {}) =>
+    requestCached(`/api/orders/${orderId}`, MobileCacheTTL.ORDER_DETAIL_MS, { force }),
   acceptOrder: (orderId, finalBillAmount, deliveryTimeWindow, fulfillment, createBackorder) =>
-    request(`/api/orders/transition/accept/${orderId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        finalBillAmount,
-        deliveryTimeWindow,
-        fulfillment,
-        createBackorder,
-      }),
-    }),
+    mutateAndInvalidate(
+      `/api/orders/transition/accept/${orderId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({
+          finalBillAmount,
+          deliveryTimeWindow,
+          fulfillment,
+          createBackorder,
+        }),
+      },
+      invalidateOrdersCache,
+    ),
   markBackorderReady: (orderId, finalBillAmount, deliveryTimeWindow) =>
-    request(`/api/orders/transition/backorder-ready/${orderId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ finalBillAmount, deliveryTimeWindow }),
-    }),
+    mutateAndInvalidate(
+      `/api/orders/transition/backorder-ready/${orderId}`,
+      { method: 'PATCH', body: JSON.stringify({ finalBillAmount, deliveryTimeWindow }) },
+      invalidateOrdersCache,
+    ),
   selectPayment: (orderId, paymentMethod) =>
-    request(`/api/orders/transition/select-payment/${orderId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ paymentMethod }),
-    }),
+    mutateAndInvalidate(
+      `/api/orders/transition/select-payment/${orderId}`,
+      { method: 'PATCH', body: JSON.stringify({ paymentMethod }) },
+      invalidateOrdersCache,
+    ),
   createRazorpayOrder: (orderId) =>
-    request(`/api/orders/transition/create-razorpay-order/${orderId}`, { method: 'POST' }),
+    mutateAndInvalidate(
+      `/api/orders/transition/create-razorpay-order/${orderId}`,
+      { method: 'POST' },
+      invalidateOrdersCache,
+    ),
   verifyPayment: (orderId, paymentData) =>
-    request(`/api/orders/transition/verify-payment/${orderId}`, {
-      method: 'POST',
-      body: JSON.stringify(paymentData),
-    }),
+    mutateAndInvalidate(
+      `/api/orders/transition/verify-payment/${orderId}`,
+      { method: 'POST', body: JSON.stringify(paymentData) },
+      invalidateOrdersCache,
+    ),
   payOrderMock: (orderId) =>
-    request(`/api/orders/transition/pay/${orderId}`, { method: 'PATCH' }),
+    mutateAndInvalidate(
+      `/api/orders/transition/pay/${orderId}`,
+      { method: 'PATCH' },
+      invalidateOrdersCache,
+    ),
   shipOrder: (orderId) =>
-    request(`/api/orders/transition/ship/${orderId}`, { method: 'PATCH' }),
+    mutateAndInvalidate(
+      `/api/orders/transition/ship/${orderId}`,
+      { method: 'PATCH' },
+      invalidateOrdersCache,
+    ),
   deliverOrder: (orderId) =>
-    request(`/api/orders/transition/deliver/${orderId}`, { method: 'PATCH' }),
+    mutateAndInvalidate(
+      `/api/orders/transition/deliver/${orderId}`,
+      { method: 'PATCH' },
+      invalidateOrdersCache,
+    ),
   rejectOrder: (orderId, reason) =>
-    request(`/api/orders/transition/reject/${orderId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ reason }),
-    }),
+    mutateAndInvalidate(
+      `/api/orders/transition/reject/${orderId}`,
+      { method: 'PATCH', body: JSON.stringify({ reason }) },
+      invalidateOrdersCache,
+    ),
   returnOrder: (orderId, reason) =>
-    request(`/api/orders/transition/return/${orderId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ reason }),
-    }),
+    mutateAndInvalidate(
+      `/api/orders/transition/return/${orderId}`,
+      { method: 'PATCH', body: JSON.stringify({ reason }) },
+      invalidateOrdersCache,
+    ),
   refundOrder: (orderId) =>
-    request(`/api/orders/transition/refund/${orderId}`, { method: 'POST' }),
+    mutateAndInvalidate(
+      `/api/orders/transition/refund/${orderId}`,
+      { method: 'POST' },
+      invalidateOrdersCache,
+    ),
 
   reorderOrder: (orderId) =>
-    request(`/api/orders/reorder/${orderId}`, { method: 'POST' }),
+    mutateAndInvalidate(
+      `/api/orders/reorder/${orderId}`,
+      { method: 'POST' },
+      invalidateOrdersCache,
+    ),
 
   // Support
   createTicket: (orderId, issueType, customerMessage) =>
@@ -369,19 +460,28 @@ export const api = {
     request(`/api/admin/shops${buildQuery({ page, limit })}`),
   inviteShop: (body) => request('/api/admin/shops/invite', { method: 'POST', body: JSON.stringify(body) }),
   approveShop: (shopId, rank) =>
-    request(`/api/admin/shops/${shopId}/approve`, { method: 'PATCH', body: JSON.stringify({ rank }) }),
+    mutateAndInvalidate(
+      `/api/admin/shops/${shopId}/approve`,
+      { method: 'PATCH', body: JSON.stringify({ rank }) },
+      () => invalidateCachePrefix('/api/shops/area/'),
+    ),
   rejectShop: (shopId, rejectionReason) =>
     request(`/api/admin/shops/${shopId}/reject`, { method: 'PATCH', body: JSON.stringify({ rejectionReason }) }),
   updateShopOperationalStatus: (shopId, operationalStatus) =>
-    request(`/api/admin/shops/${shopId}/operational-status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ operationalStatus }),
-    }),
+    mutateAndInvalidate(
+      `/api/admin/shops/${shopId}/operational-status`,
+      { method: 'PATCH', body: JSON.stringify({ operationalStatus }) },
+      () => invalidateCachePrefix('/api/shops/area/'),
+    ),
   updateShop: (shopId, body) =>
     request(`/api/admin/shops/${shopId}`, { method: 'PATCH', body: JSON.stringify(body) }),
   deleteShop: (shopId) => request(`/api/admin/shops/${shopId}`, { method: 'DELETE' }),
   createArea: (name, city) =>
-    request('/api/admin/areas', { method: 'POST', body: JSON.stringify({ name, city }) }),
+    mutateAndInvalidate(
+      '/api/admin/areas',
+      { method: 'POST', body: JSON.stringify({ name, city }) },
+      invalidateAreasCache,
+    ),
 
   getAllUsers: ({ role, accountStatus, page = 1, limit = PAGE_LIMIT } = {}) =>
     request(`/api/admin/users${buildQuery({ role, accountStatus, page, limit })}`),

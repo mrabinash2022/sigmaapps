@@ -1,0 +1,40 @@
+---
+description: Ensure all git commits use Abinash as author
+alwaysApply: true
+---
+
+# Git commit author
+
+When creating git commits for this project, the author must always be:
+
+**Abinash** `<mrabinash2022@gmail.com>`
+
+## How to commit
+
+Do **not** change `git config`. Pass author explicitly on every commit:
+
+```bash
+git commit --author="Abinash <mrabinash2022@gmail.com>" -m "..."
+```
+
+On Windows PowerShell, use a here-string for multiline messages with `-F -` and still pass `--author`:
+
+```powershell
+git commit --author="Abinash <mrabinash2022@gmail.com>" -F -
+```
+
+Alternatively, set env vars for that command only:
+
+```bash
+GIT_AUTHOR_NAME="Abinash" GIT_AUTHOR_EMAIL="mrabinash2022@gmail.com" GIT_COMMITTER_NAME="Abinash" GIT_COMMITTER_EMAIL="mrabinash2022@gmail.com" git commit -m "..."
+```
+
+## Verify before push
+
+After committing, confirm authorship:
+
+```bash
+git log -1 --format="%an <%ae>"
+```
+
+Expected: `Abinash <mrabinash2022@gmail.com>`

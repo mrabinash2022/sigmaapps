@@ -1,0 +1,53 @@
+---
+description: Localite coding standards and best practices
+alwaysApply: true
+---
+
+# Coding standards
+
+## General
+
+- **Minimize scope** — only change what the task requires
+- **Match existing style** — naming, imports, error handling, folder layout
+- **No over-engineering** — no extra abstractions for one-off use
+- **Self-explanatory code** — comments only for non-obvious business rules
+
+## Monorepo
+
+- Put cross-platform enums/utils in `packages/shared/src/`
+- Export new shared symbols from `packages/shared/src/index.js`
+- Mobile and API both depend on `@localite/shared`
+
+## API (`apps/api`)
+
+- ES modules (`import`/`export`); `.js` extensions on relative imports
+- Routes: thin — validate input, call service, return JSON
+- Business logic in `services/`; DB access via Sequelize models
+- Use `logger` from `src/logging/logger.js` — not `console.log`
+- Errors: throw with `statusCode` or use `OrderStateError`; `errorHandler` middleware formats response
+- Auth: `authenticate`, `requireRole`, `requireOnboarded`, `requireShopAccess` from `middleware/auth.js`
+- Never log secrets, tokens, or full OTP values
+
+## Mobile (`apps/mobile`)
+
+- Screens under `src/screens/{role}/`
+- API calls only through `src/services/api.js`
+- Log errors with `src/logging/logger.js`
+- Use `@localite/shared` for order status, enums, catalog helpers
+- Secure tokens via `expo-secure-store` (handled in `api.js`)
+
+## Database
+
+- Schema changes: add migration in appropriate `*SchemaMigration.js` service
+- Update `docs/architecture.md` and `docs/app.sql` when schema changes
+
+## Security
+
+- No secrets in code or committed files
+- Rate-limit sensitive endpoints (auth, logs)
+- Validate and sanitize user input on the API
+
+## Git
+
+- Author: `Abinash <mrabinash2022@gmail.com>`
+- Never commit `docs/logging/**/*.log`, `.env`, `dev.local`, or uploads

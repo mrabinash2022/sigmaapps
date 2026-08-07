@@ -20,6 +20,7 @@ import {
 } from '../services/shopService.js';
 import { ShopCategory } from '@localite/shared';
 import { parsePagination, paginatedResponse } from '../utils/pagination.js';
+import { invalidateAreasCache, invalidateShopCaches } from '../services/cacheService.js';
 
 const router = Router();
 
@@ -73,6 +74,7 @@ router.patch('/shops/:shopId/approve', async (req, res, next) => {
       await notifyShopApproval(shop, applicant);
     }
 
+    invalidateShopCaches(shop);
     res.json({ shop, message: 'Shop approved and owner linked' });
   } catch (err) {
     next(err);
@@ -226,6 +228,8 @@ router.patch('/shops/:shopId/operational-status', async (req, res, next) => {
 
     await shop.update({ operationalStatus });
 
+    invalidateShopCaches(shop);
+
     if (shop.appliedById) {
       const statusLabel = operationalStatus.replace('_', ' ');
       await sendPushToUser(shop.appliedById, {
@@ -306,6 +310,7 @@ router.post('/areas', async (req, res, next) => {
     const { name, city } = req.body;
     if (!name || !city) return res.status(400).json({ error: 'name and city required' });
     const area = await Area.create({ name, city, isActive: true });
+    invalidateAreasCache();
     res.status(201).json({ area });
   } catch (err) {
     next(err);

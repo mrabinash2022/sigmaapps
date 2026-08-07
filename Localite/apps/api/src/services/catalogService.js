@@ -1,6 +1,7 @@
 import { Shop, ShopCatalogItem } from '../models/index.js';
 import { CatalogPublishStatus, getCatalogGroups, isVisualCatalogShop } from '@localite/shared';
 import { buildVisualOrderPayload } from '@localite/shared';
+import { invalidateShopCatalogCache } from './cacheService.js';
 
 const PUBLIC_CATALOG_WHERE = {
   isAvailable: true,
@@ -122,6 +123,7 @@ export async function createCatalogItem(shopId, body, imageUrl = null) {
     isAvailable: true,
   });
   if (publish) await syncShopVisualCatalogFlag(shopId);
+  invalidateShopCatalogCache(shopId);
   return item;
 }
 
@@ -131,12 +133,14 @@ export async function updateCatalogItem(item, body, imageUrl) {
   if (imageUrl) updates.imageUrl = imageUrl;
   await item.update(updates);
   await syncShopVisualCatalogFlag(item.shopId);
+  invalidateShopCatalogCache(item.shopId);
   return item;
 }
 
 export async function setCatalogItemPublishStatus(item, publishStatus) {
   await item.update({ publishStatus, isAvailable: true });
   await syncShopVisualCatalogFlag(item.shopId);
+  invalidateShopCatalogCache(item.shopId);
   return item;
 }
 
@@ -144,6 +148,7 @@ export async function deleteCatalogItem(item) {
   const shopId = item.shopId;
   await item.destroy();
   await syncShopVisualCatalogFlag(shopId);
+  invalidateShopCatalogCache(shopId);
 }
 
 export function normalizeCartItems(items) {

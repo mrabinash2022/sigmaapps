@@ -1,0 +1,48 @@
+---
+description: Pre-commit and PR code review checklist for Localite
+alwaysApply: false
+---
+
+# Code review checklist
+
+Run this before committing or when the user asks for a review.
+
+## Correctness
+
+- [ ] Change matches the requested behavior; no unrelated edits
+- [ ] API routes return correct status codes and error shapes
+- [ ] Order state transitions follow `orderStateMachine` rules
+- [ ] Role checks applied where needed (customer vs admin vs super admin)
+- [ ] Mobile handles loading, error, and empty states
+
+## Security & data
+
+- [ ] No secrets, API keys, or `dev.local` content committed
+- [ ] Auth required on protected routes; shop scoping enforced for admins
+- [ ] User input validated; SQL injection not possible (Sequelize parameterized)
+- [ ] Uploaded files restricted by type/size where applicable
+
+## Shared & API
+
+- [ ] New enums/constants added to `@localite/shared` if used by both apps
+- [ ] Services tested manually or with clear test plan in PR description
+- [ ] Logging uses Winston/logger — errors include useful context, not PII
+
+## Mobile
+
+- [ ] Works with existing navigation and role flows
+- [ ] Network errors surfaced to user; logged via client logger
+- [ ] No hardcoded API URL (use `expo-constants` extra)
+
+## Docs & git
+
+- [ ] `docs/architecture.md` updated if flows or schema changed
+- [ ] `cursor.md` changelog updated for notable features
+- [ ] No log files or runtime artifacts staged
+- [ ] Commit author: `Abinash <mrabinash2022@gmail.com>`
+
+## Before merge (when CI exists)
+
+- [ ] `npm run api` starts without errors
+- [ ] Mobile bundles without Metro errors
+- [ ] Lint / audit scripts pass (when added)

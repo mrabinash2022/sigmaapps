@@ -1,15 +1,19 @@
 import { Router } from 'express';
 import { Area } from '../models/index.js';
+import { cacheKey, CacheTTL, getCached } from '../services/cacheService.js';
 
 const router = Router();
 
 router.get('/', async (req, res, next) => {
   try {
-    const areas = await Area.findAll({
-      where: { isActive: true },
-      order: [['name', 'ASC']],
+    const payload = await getCached(cacheKey('areas', 'all'), CacheTTL.AREAS_MS, async () => {
+      const areas = await Area.findAll({
+        where: { isActive: true },
+        order: [['name', 'ASC']],
+      });
+      return { areas };
     });
-    res.json({ areas });
+    res.json(payload);
   } catch (err) {
     next(err);
   }

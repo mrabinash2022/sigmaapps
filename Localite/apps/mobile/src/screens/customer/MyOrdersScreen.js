@@ -71,9 +71,9 @@ export default function MyOrdersScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [payingId, setPayingId] = useState(null);
 
-  const load = () => {
+  const load = (force = false) => {
     setLoading(true);
-    api.getMyOrders()
+    api.getMyOrders({ force })
       .then(({ orders: o }) => setOrders(o || []))
       .catch((err) => Alert.alert('Error', err.message || 'Could not load orders'))
       .finally(() => setLoading(false));
@@ -376,7 +376,7 @@ export default function MyOrdersScreen({ navigation }) {
         style={styles.list}
       data={orders}
       keyExtractor={(item) => item.id}
-      refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+      refreshControl={<RefreshControl refreshing={loading} onRefresh={() => load(true)} />}
       contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
       ListHeaderComponent={
         <View style={styles.header}>

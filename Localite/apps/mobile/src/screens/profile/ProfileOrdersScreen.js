@@ -43,12 +43,12 @@ export default function ProfileOrdersScreen() {
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState('Your orders');
 
-  const load = async () => {
+  const load = async (force = false) => {
     setLoading(true);
     try {
       if (isCustomer) {
         setTitle('Orders placed by you');
-        const { orders: o } = await api.getMyOrders();
+        const { orders: o } = await api.getMyOrders({ force });
         setOrders(o || []);
       } else if (isAdmin) {
         setTitle('Orders served by your shop');
@@ -58,7 +58,7 @@ export default function ProfileOrdersScreen() {
           setOrders([]);
           return;
         }
-        const { orders: o } = await api.getShopOrders(shop.id);
+        const { orders: o } = await api.getShopOrders(shop.id, { force });
         setOrders(o || []);
       } else {
         setTitle('Orders');
@@ -100,7 +100,7 @@ export default function ProfileOrdersScreen() {
       style={styles.list}
         data={orders}
         keyExtractor={(item) => item.id}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={() => load(true)} />}
         contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
         ListHeaderComponent={<Text style={styles.heading}>{title}</Text>}
         ListEmptyComponent={<Text style={styles.empty}>No orders found.</Text>}
