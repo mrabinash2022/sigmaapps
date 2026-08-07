@@ -94,6 +94,27 @@ curl -s -X POST "$BASE_URL/api/admin/shops" \
 
 ---
 
+## Update shop details
+
+```bash
+curl -s -X PATCH "$BASE_URL/api/admin/shops/$SHOP_ID" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Quick Mart Updated",
+    "category": "Grocery",
+    "address": "New Market Road",
+    "phone": "9876543210",
+    "itemTypes": "Daily essentials, snacks",
+    "description": "Updated description",
+    "ownerName": "Owner Name",
+    "rank": 5,
+    "areaId": "'"$AREA_ID"'"
+  }' | jq .
+```
+
+---
+
 ## Update shop operational status
 
 Only for **approved** shops. Values: `enabled`, `disabled`, `on_hold`
@@ -151,6 +172,78 @@ curl -s -X POST "$BASE_URL/api/admin/areas" \
 
 ```bash
 curl -s "$BASE_URL/api/admin/users" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+```
+
+With filters:
+
+```bash
+curl -s "$BASE_URL/api/admin/users?role=customer&accountStatus=enabled&page=1&limit=20" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+```
+
+`role`: `customer`, `admin` (includes shop staff). `accountStatus`: `enabled`, `disabled`, `on_hold`.
+
+---
+
+## Create user (customer or store owner)
+
+```bash
+curl -s -X POST "$BASE_URL/api/admin/users" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"name\": \"New Customer\",
+    \"phone\": \"7777777771\",
+    \"email\": \"newcustomer@example.com\",
+    \"password\": \"Customer@123\",
+    \"address\": \"Roseland Residency\",
+    \"areaId\": \"$AREA_ID\",
+    \"role\": \"customer\"
+  }" | jq .
+```
+
+Use `"role": "admin"` to create a store-owner account.
+
+---
+
+## Update user
+
+```bash
+curl -s -X PATCH "$BASE_URL/api/admin/users/$USER_ID" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"name\": \"Updated Name\",
+    \"phone\": \"7777777771\",
+    \"email\": \"updated@example.com\",
+    \"address\": \"New address\",
+    \"areaId\": \"$AREA_ID\",
+    \"role\": \"customer\"
+  }" | jq .
+```
+
+---
+
+## Change user account status
+
+Values: `enabled`, `disabled`, `on_hold`. Revokes tokens when not enabled.
+
+```bash
+curl -s -X PATCH "$BASE_URL/api/admin/users/$USER_ID/account-status" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"accountStatus": "disabled"}' | jq .
+```
+
+---
+
+## Delete user
+
+Fails if the user has existing orders.
+
+```bash
+curl -s -X DELETE "$BASE_URL/api/admin/users/$USER_ID" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 

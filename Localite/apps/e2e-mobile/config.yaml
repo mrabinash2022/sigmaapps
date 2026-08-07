@@ -1,0 +1,8 @@
+# Maestro environment for Localite smoke tests.
+# Local Android emulator: API at 10.0.2.2, Metro at 10.0.2.2:8081
+env:
+  CUSTOMER_PHONE: "8888888888"
+  CUSTOMER_PASSWORD: "Customer@123"
+  SHOP_PHONE: "9999999999"
+  SHOP_PASSWORD: "Admin@12345"
+  ORDER_TEXT: "2kg rice, 1L oil"

@@ -1,0 +1,16 @@
+appId: host.exp.exponent
+---
+- launchApp
+- tapOn:
+    id: login-identifier
+- inputText: ${CUSTOMER_PHONE}
+- tapOn:
+    id: login-password
+- inputText: ${CUSTOMER_PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: login-submit
+- extendedWaitUntil:
+    visible:
+      id: tab-stores
+    timeout: 20000

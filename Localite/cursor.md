@@ -154,7 +154,7 @@ Use a **layered** approach so humans, AI, and CI each have a clear home:
 | **Git commit rules** | `.cursor/rules/git-commit-author.mdc` | On commit |
 | **Deep architecture** | `docs/architecture.md` | Human reference; link from PRs |
 | **Human review checklist** | `docs/code-review.md` *(add when team grows)* | PR template / manual review |
-| **Automated CI** | `.github/workflows/` *(future)* | On push / PR — lint, test, typecheck |
+| **Automated CI** | `.github/workflows/api-test.yml`, `mobile-smoke.yml` | PR / merge — API tests, mobile smoke |
 | **PR template** | `.github/pull_request_template.md` *(future)* | Reminds reviewers what to check |
 | **Cursor Bugbot / Security Review** | Ask in chat or use review skills | On demand before merge |
 
@@ -163,7 +163,8 @@ Use a **layered** approach so humans, AI, and CI each have a clear home:
 1. **While coding** — Cursor reads `.cursor/rules/coding-standards.mdc`
 2. **Before check-in** — Run through `.cursor/rules/code-review.mdc` (or ask: “review my changes”)
 3. **On PR** — Human uses `docs/architecture.md` + future `docs/code-review.md`
-4. **Later** — Add GitHub Actions for ESLint, tests, and `npm audit`
+4. **On PR** — `npm run test:api:ci` locally; CI runs the same via GitHub Actions
+5. **Later** — Add ESLint and `npm audit` to CI
 
 ### Adding new review rules
 
@@ -180,7 +181,7 @@ Use a **layered** approach so humans, AI, and CI each have a clear home:
 | [README.md](./README.md) | Quick start & demo accounts |
 | [cursor.md](./cursor.md) | This file — stack, conventions, AI context |
 | [docs/architecture.md](./docs/architecture.md) | Full system design, flows, schema |
-| [docs/logging/README.md](./docs/logging/README.md) | Logging setup & file layout |
+| [docs/testing/README.md](./docs/testing/README.md) | How to run API & mobile tests |
 | [.cursor/rules/](./.cursor/rules/) | Cursor AI rules (standards, review, git) |
 
 ---

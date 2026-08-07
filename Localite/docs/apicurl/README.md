@@ -58,6 +58,7 @@ Authorization: Bearer <accessToken>
 | [03-orders.md](03-orders.md) | Order lifecycle |
 | [04-admin.md](04-admin.md) | Super admin shop & user management |
 | [05-support-and-webhooks.md](05-support-and-webhooks.md) | Support tickets, Razorpay webhook |
+| [06-catalog-app-logs.md](06-catalog-app-logs.md) | Catalog CRUD, app info, referrals, client logs |
 | [localite.postman_collection.json](localite.postman_collection.json) | Postman collection (import all endpoints) |
 | [localite.postman_environment.json](localite.postman_environment.json) | Postman environment variables |
 
@@ -72,7 +73,15 @@ Authorization: Bearer <accessToken>
 5. `PATCH /api/admin/shops/:id/approve`
 6. `PATCH /api/admin/shops/:id/operational-status` → `enabled`
 
-### Customer: place order
+### Customer: place catalog order
+
+1. Login as customer
+2. `GET /api/areas` → `GET /api/shops/area/:areaId` → copy `shopId`
+3. `GET /api/shops/:shopId/catalog` → copy `catalogItemId` values
+4. `POST /api/orders/submit-catalog-order` with `shopId` + `items[]`
+5. Shop accepts → customer pays → ship → deliver
+
+### Customer: place text order
 
 1. Login as customer
 2. `GET /api/areas` → `GET /api/shops/area/:areaId` → copy `shopId`

@@ -1,0 +1,112 @@
+name: Mobile Smoke Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Localite/apps/mobile/**'
+      - 'Localite/apps/e2e-mobile/**'
+      - 'Localite/apps/api/**'
+      - '.github/workflows/mobile-smoke.yml'
+  schedule:
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: Localite
+
+jobs:
+  maestro-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      NODE_ENV: test
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: localite_test_db
+      JWT_SECRET: test-jwt-secret-localite
+      JWT_REFRESH_SECRET: test-jwt-refresh-secret-localite
+      DISABLE_AUTH_RATE_LIMIT: 'true'
+      DEV_OTP: '123456'
+      EXPO_PUBLIC_API_URL: http://10.0.2.2:5000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: Localite/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Seed test database
+        run: npm run api:seed
+
+      - name: Install Maestro CLI
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+
+      - name: Run smoke tests on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            set -e
+            adb reverse tcp:5000 tcp:5000
+            adb reverse tcp:8081 tcp:8081
+
+            npm run start --workspace=@localite/api &
+            API_PID=$!
+
+            for i in $(seq 1 30); do
+              curl -sf http://localhost:5000/api/health && break
+              sleep 2
+            done
+
+            wget -q -O /tmp/expo-go.apk "https://d1ahtucmeujm3k.cloudfront.net/Exponent-2.32.19.apk" || \
+              wget -q -O /tmp/expo-go.apk "https://github.com/expo/expo-go-releases/releases/download/Expo-Go-2.32.19/Expo-Go-2.32.19.apk"
+            adb install -r /tmp/expo-go.apk || true
+
+            cd apps/mobile
+            npx expo start --non-interactive &
+            METRO_PID=$!
+            sleep 45
+
+            adb shell am start -a android.intent.action.VIEW -d "exp://10.0.2.2:8081"
+
+            maestro test ../e2e-mobile/flows/smoke-suite.yaml --config ../e2e-mobile/config.yaml
+
+            kill $API_PID $METRO_PID || true

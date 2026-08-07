@@ -373,6 +373,7 @@ export default function MyOrdersScreen({ navigation }) {
   return (
     <ScreenLayout>
       <FlatList
+        testID="my-orders-screen"
         style={styles.list}
       data={orders}
       keyExtractor={(item) => item.id}

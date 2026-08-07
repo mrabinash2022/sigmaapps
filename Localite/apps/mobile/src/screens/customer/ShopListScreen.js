@@ -82,6 +82,7 @@ export default function ShopListScreen({ navigation }) {
         <Text style={styles.sub}>{selectedArea?.city}</Text>
 
         <FlatList
+        testID="shop-list"
         data={shops}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingBottom: 24 }}
@@ -92,6 +93,7 @@ export default function ShopListScreen({ navigation }) {
         }
         renderItem={({ item }) => (
           <TouchableOpacity
+            testID="shop-card"
             style={styles.card}
             onPress={() => navigation.navigate(
               shopHasVisualCatalog(item) ? 'CatalogOrder' : 'PlaceOrder',

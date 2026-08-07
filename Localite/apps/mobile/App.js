@@ -97,6 +97,7 @@ function CustomerTabs() {
           title: 'Orders',
           iconActive: 'receipt',
           iconInactive: 'receipt-outline',
+          testID: 'tab-orders',
         })}
       />
       <Tab.Screen
@@ -107,6 +108,7 @@ function CustomerTabs() {
           title: 'Stores',
           iconActive: 'storefront',
           iconInactive: 'storefront-outline',
+          testID: 'tab-stores',
         })}
       />
     </Tab.Navigator>
@@ -138,6 +140,7 @@ function AdminTabs() {
           title: 'Order Queue',
           iconActive: 'receipt',
           iconInactive: 'receipt-outline',
+          testID: 'tab-orders',
         })}
       />
       <Tab.Screen

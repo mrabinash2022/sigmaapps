@@ -10,6 +10,9 @@
   "scripts": {
     "api": "npm run dev --workspace=@localite/api",
     "api:seed": "npm run seed --workspace=@localite/api",
+    "test": "npm run test --workspace=@localite/api",
+    "test:api": "npm run test --workspace=@localite/api",
+    "test:api:ci": "npm run test:ci --workspace=@localite/api",
     "mobile": "npm run start --workspace=@localite/mobile",
     "dev": "npm run api",
     "db:up": "docker compose up -d",

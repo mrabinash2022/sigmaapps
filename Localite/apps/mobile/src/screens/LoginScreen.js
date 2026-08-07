@@ -275,6 +275,7 @@ export default function LoginScreen() {
             value={isRegister ? phone : identifier}
             onChangeText={isRegister ? onRegisterPhoneChange : setIdentifier}
             keyboardType="phone-pad"
+            testID="login-identifier"
           />
           {isRegister && (
             <TextInput
@@ -293,6 +294,7 @@ export default function LoginScreen() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            testID="login-password"
           />
 
           {isRegister && (
@@ -365,7 +367,7 @@ export default function LoginScreen() {
           )}
 
           {!isRegister && (
-            <TouchableOpacity style={styles.btn} onPress={handlePasswordLogin} disabled={loading}>
+            <TouchableOpacity style={styles.btn} onPress={handlePasswordLogin} disabled={loading} testID="login-submit">
               {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Login</Text>}
             </TouchableOpacity>
           )}

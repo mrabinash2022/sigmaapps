@@ -52,13 +52,26 @@ Human-readable checklist for pull requests. Cursor AI uses the shorter version i
 - `docs/architecture.md` — system design changes
 - `README.md` — setup or demo account changes
 
-## Automated checks (planned)
+## Automated checks
 
-When CI is added under `.github/workflows/`:
+CI workflows under `.github/workflows/`:
 
-- Install & build workspaces
-- API smoke test (health endpoint)
-- ESLint / formatter (if configured)
+| Workflow | When | Command equivalent |
+|----------|------|-------------------|
+| `api-test.yml` | PR + push to `main` | `npm run test:api:ci` |
+| `mobile-smoke.yml` | Merge, nightly, manual | `maestro test apps/e2e-mobile/flows` |
+
+Run API tests locally before opening a PR:
+
+```bash
+npm run test:api:ci
+```
+
+See [docs/testing/README.md](./testing/README.md) for setup, troubleshooting, and Maestro instructions.
+
+Planned additions:
+
+- ESLint / formatter
 - `npm audit` for critical vulnerabilities
 
 ## PR template snippet (future)

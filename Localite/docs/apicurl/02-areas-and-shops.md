@@ -23,13 +23,23 @@ curl -s "$BASE_URL/api/areas/$AREA_ID" | jq .
 curl -s "$BASE_URL/api/shops/area/$AREA_ID" | jq .
 ```
 
-With category filter:
+With pagination and category filter:
 
 ```bash
-curl -s "$BASE_URL/api/shops/area/$AREA_ID?category=Grocery" | jq .
+curl -s "$BASE_URL/api/shops/area/$AREA_ID?page=1&limit=20&category=Grocery" | jq .
 ```
 
-Categories: `Sweets`, `Medicines`, `Vegetables`, `Bakery`, `Grocery`
+Categories: `Sweets`, `Medicines`, `Vegetables`, `Bakery`, `Grocery`, `Flowers`, `Nursery`
+
+---
+
+## Get shop catalog (public)
+
+Published products grouped for visual ordering.
+
+```bash
+curl -s "$BASE_URL/api/shops/$SHOP_ID/catalog" | jq .
+```
 
 ---
 

@@ -1,0 +1,11 @@
+appId: host.exp.exponent
+---
+- runFlow: subflows/login-customer.yaml
+- tapOn:
+    id: tab-stores
+- extendedWaitUntil:
+    visible:
+      id: shop-list
+    timeout: 15000
+- assertVisible:
+    id: shop-card
