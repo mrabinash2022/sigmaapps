@@ -24,6 +24,7 @@ import EditCatalogItemScreen from './src/screens/shopkeeper/EditCatalogItemScree
 import SuperAdminDashboard from './src/screens/admin/SuperAdminDashboard';
 import ProfileScreen from './src/screens/profile/ProfileScreen';
 import ProfileOrdersScreen from './src/screens/profile/ProfileOrdersScreen';
+import ReportsScreen from './src/screens/profile/ReportsScreen';
 import {
   appTabScreenOptions,
   buildTabOptions,
@@ -125,6 +126,7 @@ function CustomerStack() {
       <Stack.Screen name="ReorderConfirm" component={ReorderConfirmScreen} options={{ title: 'Reorder' }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
       <Stack.Screen name="ProfileOrders" component={ProfileOrdersScreen} options={{ title: 'Order History' }} />
+      <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Reports' }} />
     </Stack.Navigator>
   );
 }
@@ -166,6 +168,7 @@ function AdminStack() {
       <Stack.Screen name="EditCatalogItem" component={EditCatalogItemScreen} options={{ title: 'Product' }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Shop Profile' }} />
       <Stack.Screen name="ProfileOrders" component={ProfileOrdersScreen} options={{ title: 'Orders Served' }} />
+      <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Reports' }} />
     </Stack.Navigator>
   );
 }
@@ -176,6 +179,7 @@ function SuperAdminStack() {
       <Stack.Screen name="Dashboard" component={SuperAdminDashboard} options={{ title: 'Super Admin' }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
       <Stack.Screen name="ProfileOrders" component={ProfileOrdersScreen} options={{ title: 'Orders' }} />
+      <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Reports' }} />
     </Stack.Navigator>
   );
 }

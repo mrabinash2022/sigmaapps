@@ -33,6 +33,11 @@ export async function loadTokens() {
   return { accessToken, refreshToken };
 }
 
+export async function getAccessToken() {
+  if (!accessToken) await loadTokens();
+  return accessToken;
+}
+
 export async function saveTokens({ accessToken: at, refreshToken: rt }) {
   accessToken = at;
   refreshToken = rt;
@@ -452,6 +457,12 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ phone, email }),
     }),
+
+  getOrderReport: ({ preset = 'week', from, to, shopId } = {}) =>
+    request(`/api/reports/orders${buildQuery({ preset, from, to, shopId })}`),
+
+  getOrderReportExportUrl: ({ preset = 'week', from, to, shopId, format = 'xlsx' } = {}) =>
+    `${API_URL}/api/reports/orders/export${buildQuery({ preset, from, to, shopId, format })}`,
 
   // Super admin
   getPendingShops: ({ page = 1, limit = PAGE_LIMIT } = {}) =>

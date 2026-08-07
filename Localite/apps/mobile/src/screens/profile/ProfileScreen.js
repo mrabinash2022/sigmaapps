@@ -127,6 +127,16 @@ export default function ProfileScreen() {
           <Text style={styles.ordersLinkSub}>View full order history with status and payment</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={[styles.ordersLink, styles.reportsLink]}
+          onPress={() => navigation.navigate('Reports')}
+        >
+          <Text style={styles.ordersLinkTitle}>Reports</Text>
+          <Text style={styles.ordersLinkSub}>
+            Download order reports by day, week, month, or custom range as Excel or PDF
+          </Text>
+        </TouchableOpacity>
+
         <ProfileReferSection userName={user.name} />
         <ProfileAboutSection appInfo={appInfo} />
     </ScrollView>
@@ -169,6 +179,11 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: '#c8e6d4',
+    marginBottom: 12,
+  },
+  reportsLink: {
+    backgroundColor: '#fff',
+    borderColor: '#e2efe6',
   },
   ordersLinkTitle: { fontSize: 16, fontWeight: '700', color: '#1a7f4b' },
   ordersLinkSub: { fontSize: 13, color: '#555', marginTop: 6, lineHeight: 18 },
