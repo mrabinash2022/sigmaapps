@@ -22,6 +22,26 @@ export async function authenticate(req, res, next) {
   }
 }
 
+/** Attach user when a valid token is present; continue without user otherwise. */
+export async function optionalAuthenticate(req, _res, next) {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) {
+    return next();
+  }
+
+  try {
+    const payload = verifyAccessToken(header.slice(7));
+    const user = await User.findByPk(payload.id);
+    if (user && user.accountStatus === UserAccountStatus.ENABLED && user.isActive) {
+      req.user = user;
+    }
+  } catch {
+    // Ignore invalid tokens for optional auth routes.
+  }
+
+  next();
+}
+
 export function requireRole(...roles) {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import OrderListTextInput from './OrderListTextInput';
 
 export default function OrderExtrasPanel({
   extraText,
@@ -25,17 +26,14 @@ export default function OrderExtrasPanel({
     <View style={styles.wrap}>
       <Text style={styles.sectionTitle}>Need something else?</Text>
       <Text style={styles.hint}>
-        Add items not shown above — type your list or upload a photo of a handwritten list.
+        Add items not shown above — type your list, speak into the mic, or upload a photo of a handwritten list.
       </Text>
 
-      <TextInput
-        style={styles.textArea}
-        multiline
-        numberOfLines={5}
-        placeholder="e.g. 2 white lotus, 1 kg rose petals, small brass kalash..."
+      <OrderListTextInput
         value={extraText}
         onChangeText={onExtraTextChange}
-        textAlignVertical="top"
+        placeholder="e.g. 2 white lotus, 1 kg rose petals, small brass kalash..."
+        accent={accent}
       />
 
       <TouchableOpacity style={[styles.uploadBtn, { borderColor: accent }]} onPress={pickImage}>
@@ -61,16 +59,6 @@ const styles = StyleSheet.create({
   wrap: { marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#eee' },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: '#222' },
   hint: { fontSize: 13, color: '#666', marginTop: 4, marginBottom: 12, lineHeight: 18 },
-  textArea: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 12,
-    padding: 14,
-    minHeight: 120,
-    backgroundColor: '#fff',
-    fontSize: 15,
-    marginBottom: 12,
-  },
   uploadBtn: {
     borderWidth: 1,
     borderRadius: 10,

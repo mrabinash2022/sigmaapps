@@ -2,8 +2,9 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { ActivityIndicator, View, Pressable, Text, StyleSheet } from 'react-native';
+import { ActivityIndicator, View, Pressable, Text, StyleSheet, Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { Ionicons } from '@expo/vector-icons';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { UserRole } from '@localite/shared';
 
@@ -75,11 +76,74 @@ function AppShell() {
   );
 }
 
+const TAB_ACTIVE = '#1a7f4b';
+const TAB_INACTIVE = '#94a3b8';
+
+function TabLabel({ label, focused, color }) {
+  return (
+    <Text style={[styles.tabLabel, { color }, focused && styles.tabLabelActive]}>
+      {label}
+    </Text>
+  );
+}
+
+function CustomerTabIcon({ name, focused, color }) {
+  return (
+    <View style={[styles.tabIconWrap, focused && styles.tabIconWrapActive]}>
+      <Ionicons name={name} size={22} color={color} />
+    </View>
+  );
+}
+
 function CustomerTabs() {
   return (
-    <Tab.Navigator screenOptions={{ tabBarActiveTintColor: '#1a7f4b', ...headerOptions, headerRight: () => <LogoutButton /> }}>
-      <Tab.Screen name="Shops" component={ShopListScreen} options={{ title: 'Stores', tabBarLabel: 'Stores' }} />
-      <Tab.Screen name="MyOrders" component={MyOrdersScreen} options={{ title: 'Orders', tabBarLabel: 'Orders' }} />
+    <Tab.Navigator
+      screenOptions={{
+        tabBarActiveTintColor: TAB_ACTIVE,
+        tabBarInactiveTintColor: TAB_INACTIVE,
+        tabBarShowLabel: true,
+        tabBarHideOnKeyboard: true,
+        tabBarStyle: styles.customerTabBar,
+        headerStyle: headerOptions.headerStyle,
+        headerTintColor: headerOptions.headerTintColor,
+        headerTitleStyle: headerOptions.headerTitleStyle,
+        headerRight: () => <LogoutButton />,
+      }}
+    >
+      <Tab.Screen
+        name="Shops"
+        component={ShopListScreen}
+        options={{
+          title: 'Stores',
+          tabBarLabel: ({ focused, color }) => (
+            <TabLabel label="Stores" focused={focused} color={color} />
+          ),
+          tabBarIcon: ({ focused, color }) => (
+            <CustomerTabIcon
+              name={focused ? 'storefront' : 'storefront-outline'}
+              focused={focused}
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="MyOrders"
+        component={MyOrdersScreen}
+        options={{
+          title: 'Orders',
+          tabBarLabel: ({ focused, color }) => (
+            <TabLabel label="Orders" focused={focused} color={color} />
+          ),
+          tabBarIcon: ({ focused, color }) => (
+            <CustomerTabIcon
+              name={focused ? 'receipt' : 'receipt-outline'}
+              focused={focused}
+              color={color}
+            />
+          ),
+        }}
+      />
     </Tab.Navigator>
   );
 }
@@ -170,4 +234,37 @@ const styles = StyleSheet.create({
   logout: { marginRight: 16, minWidth: 56, alignItems: 'center', justifyContent: 'center' },
   logoutPressed: { opacity: 0.7 },
   logoutText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  customerTabBar: {
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e2efe6',
+    height: Platform.OS === 'ios' ? 84 : 68,
+    paddingTop: 8,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 10,
+    elevation: 16,
+    shadowColor: '#14532d',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: -4 },
+  },
+  tabIconWrap: {
+    width: 40,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabIconWrapActive: {
+    backgroundColor: '#e8f5ee',
+  },
+  tabLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 2,
+    letterSpacing: 0.2,
+  },
+  tabLabelActive: {
+    fontWeight: '800',
+    fontSize: 12.5,
+  },
 });

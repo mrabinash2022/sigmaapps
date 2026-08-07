@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
+import logger, { setLoggerAccessToken } from './logging/logger';
 
 const API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:5000';
 export const PAGE_LIMIT = 20;
@@ -21,12 +22,14 @@ let refreshToken = null;
 export async function loadTokens() {
   accessToken = await SecureStore.getItemAsync('accessToken');
   refreshToken = await SecureStore.getItemAsync('refreshToken');
+  setLoggerAccessToken(accessToken);
   return { accessToken, refreshToken };
 }
 
 export async function saveTokens({ accessToken: at, refreshToken: rt }) {
   accessToken = at;
   refreshToken = rt;
+  setLoggerAccessToken(at);
   await SecureStore.setItemAsync('accessToken', at);
   if (rt) await SecureStore.setItemAsync('refreshToken', rt);
 }
@@ -34,6 +37,7 @@ export async function saveTokens({ accessToken: at, refreshToken: rt }) {
 export async function clearTokens() {
   accessToken = null;
   refreshToken = null;
+  setLoggerAccessToken(null);
   try {
     await SecureStore.deleteItemAsync('accessToken');
   } catch {
@@ -77,7 +81,8 @@ async function request(path, options = {}, retry = true) {
   let res;
   try {
     res = await fetch(`${API_URL}${path}`, { ...options, headers });
-  } catch {
+  } catch (networkErr) {
+    logger.error('API network error', networkErr, { path, method: options.method || 'GET' });
     throw new Error(`Network error — cannot reach API at ${API_URL}`);
   }
 
@@ -92,7 +97,15 @@ async function request(path, options = {}, retry = true) {
   }
 
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `Request failed: ${res.status}`);
+  if (!res.ok) {
+    logger.warn('API request failed', {
+      path,
+      method: options.method || 'GET',
+      status: res.status,
+      error: data.error,
+    });
+    throw new Error(data.error || `Request failed: ${res.status}`);
+  }
   return data;
 }
 
@@ -339,6 +352,14 @@ export const api = {
     request(`/api/support/update-ticket/${ticketId}`, {
       method: 'PATCH',
       body: JSON.stringify(body),
+    }),
+
+  // App info & referrals
+  getAppInfo: () => request('/api/app/info'),
+  sendAppReferral: ({ phone, email }) =>
+    request('/api/app/refer', {
+      method: 'POST',
+      body: JSON.stringify({ phone, email }),
     }),
 
   // Super admin

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   Alert,
@@ -12,6 +11,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { api } from '../../services/api';
 import ScreenLayout from '../../components/ScreenLayout';
+import OrderListTextInput from '../../components/OrderListTextInput';
 
 export default function PlaceOrderScreen({ route, navigation }) {
   const { shop } = route.params;
@@ -50,16 +50,13 @@ export default function PlaceOrderScreen({ route, navigation }) {
     <ScreenLayout>
       <ScrollView style={styles.container} contentContainerStyle={{ padding: 16 }}>
       <Text style={styles.shopName}>{shop.name}</Text>
-      <Text style={styles.hint}>Write what you need — just like you tell them in person.</Text>
+      <Text style={styles.hint}>Write what you need — type, speak into the mic, or upload a photo.</Text>
 
-      <TextInput
-        style={styles.textArea}
-        multiline
-        numberOfLines={8}
-        placeholder="e.g. 500g besan ladoo, 2 boxes kaju katli, 1kg mixed namkeen..."
+      <OrderListTextInput
         value={text}
         onChangeText={setText}
-        textAlignVertical="top"
+        placeholder="e.g. 500g besan ladoo, 2 boxes kaju katli, 1kg mixed namkeen..."
+        minHeight={160}
       />
 
       <TouchableOpacity style={styles.uploadBtn} onPress={pickImage}>
@@ -80,16 +77,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8faf9' },
   shopName: { fontSize: 22, fontWeight: '700', color: '#111' },
   hint: { fontSize: 14, color: '#666', marginVertical: 12 },
-  textArea: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 12,
-    padding: 14,
-    minHeight: 160,
-    backgroundColor: '#fff',
-    fontSize: 16,
-    marginBottom: 16,
-  },
   uploadBtn: {
     borderWidth: 1,
     borderColor: '#1a7f4b',

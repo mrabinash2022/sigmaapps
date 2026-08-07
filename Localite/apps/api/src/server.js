@@ -9,12 +9,16 @@ import './models/index.js';
 import { Shop, User } from './models/index.js';
 import { ShopOperationalStatus, ShopStatus, UserAccountStatus } from '@localite/shared';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import { requestLogger } from './middleware/requestLogger.js';
+import logger, { logError } from './logging/logger.js';
 import authRoutes from './routes/authRoutes.js';
 import areaRoutes from './routes/areaRoutes.js';
 import shopRoutes from './routes/shopRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import supportRoutes from './routes/supportRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import appRoutes from './routes/appRoutes.js';
+import logRoutes from './routes/logRoutes.js';
 import webhookRoutes from './routes/webhookRoutes.js';
 import { migrateShopCodes } from './services/shopService.js';
 import { migrateCatalogSchema } from './services/catalogSchemaMigration.js';
@@ -32,6 +36,7 @@ const PORT = process.env.PORT || 5000;
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors());
+app.use(requestLogger);
 app.use('/api/webhooks', webhookRoutes);
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -51,15 +56,26 @@ app.use('/api/areas', areaRoutes);
 app.use('/api/shops', shopRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/app', appRoutes);
+app.use('/api/logs', logRoutes);
 app.use('/api/admin', adminRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
 
 async function start() {
+  process.on('unhandledRejection', (reason) => {
+    logError('Unhandled promise rejection', reason instanceof Error ? reason : new Error(String(reason)));
+  });
+
+  process.on('uncaughtException', (err) => {
+    logError('Uncaught exception', err);
+    process.exit(1);
+  });
+
   try {
     await sequelize.authenticate();
-    console.log('Database connected');
+    logger.info('Database connected');
 
     try {
       await sequelize.query('UPDATE "OtpSessions" SET target = phone WHERE target IS NULL AND phone IS NOT NULL');
@@ -71,9 +87,9 @@ async function start() {
 
     try {
       await sequelize.sync();
-      console.log('Database synced');
+      logger.info('Database synced');
     } catch (syncErr) {
-      console.warn('Database sync skipped:', syncErr.message);
+      logger.warn('Database sync skipped', { error: syncErr.message });
     }
 
     try {
@@ -81,9 +97,9 @@ async function start() {
       await migrateUserProfileSchema();
       await migrateOrderSchema();
       await migrateCatalogSchema();
-      console.log('Schema migrations applied');
+      logger.info('Schema migrations applied');
     } catch (migErr) {
-      console.warn('Schema migration warning:', migErr.message);
+      logger.warn('Schema migration warning', { error: migErr.message });
     }
 
     await Shop.update(
@@ -93,7 +109,7 @@ async function start() {
 
     const migrated = await migrateShopCodes(Shop);
     if (migrated > 0) {
-      console.log(`Migrated ${migrated} shop ID(s) to SHOP####-NAME format`);
+      logger.info('Shop codes migrated', { count: migrated });
     }
 
     await User.update(
@@ -106,13 +122,14 @@ async function start() {
     );
 
     app.listen(PORT, () => {
-      console.log(`Localite API running on http://localhost:${PORT}`);
-      console.log(`Storage: ${getStorageInfo().provider}`);
-      console.log(`Razorpay: ${isRazorpayEnabled() ? 'enabled' : 'disabled (dev mock pay available)'}`);
+      logger.info('Localite API started', {
+        url: `http://localhost:${PORT}`,
+        storage: getStorageInfo().provider,
+        razorpay: isRazorpayEnabled() ? 'enabled' : 'disabled',
+      });
     });
   } catch (err) {
-    console.error('Failed to start server:', err.message);
-    process.exit(1);
+    logError('Failed to start server', err);    process.exit(1);
   }
 }
 

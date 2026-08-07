@@ -7,6 +7,14 @@ build/
 expo-qr.png
 *.log
 
+# Runtime logs — never commit (see docs/logging/README.md)
+docs/logging/**
+!docs/logging/README.md
+!docs/logging/backend/
+!docs/logging/backend/.gitkeep
+!docs/logging/frontend/
+!docs/logging/frontend/.gitkeep
+
 # ── Secrets — NEVER commit ──────────────────────────────────
 .env
 .env.*

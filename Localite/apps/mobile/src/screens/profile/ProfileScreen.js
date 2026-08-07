@@ -14,6 +14,9 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { getPrimaryShop, resolveMediaUrl } from '../../utils/profile';
+import ProfileReferSection from '../../components/ProfileReferSection';
+import ProfileAboutSection from '../../components/ProfileAboutSection';
+import { DEFAULT_APP_INFO } from '@localite/shared';
 
 function DetailRow({ label, value }) {
   if (!value) return null;
@@ -29,9 +32,13 @@ export default function ProfileScreen() {
   const navigation = useNavigation();
   const { user, isAdmin, isCustomer, refreshUser } = useAuth();
   const [uploading, setUploading] = useState(false);
+  const [appInfo, setAppInfo] = useState(DEFAULT_APP_INFO);
 
   useFocusEffect(useCallback(() => {
     refreshUser().catch(() => {});
+    api.getAppInfo()
+      .then(({ app }) => setAppInfo(app))
+      .catch(() => setAppInfo(DEFAULT_APP_INFO));
   }, [refreshUser]));
 
   const shop = isAdmin ? getPrimaryShop(user) : null;
@@ -119,6 +126,9 @@ export default function ProfileScreen() {
           </Text>
           <Text style={styles.ordersLinkSub}>View full order history with status and payment</Text>
         </TouchableOpacity>
+
+        <ProfileReferSection userName={user.name} />
+        <ProfileAboutSection appInfo={appInfo} />
     </ScrollView>
   );
 }
