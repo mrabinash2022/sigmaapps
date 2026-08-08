@@ -20,6 +20,9 @@ import {
 import { findShopsForAdmin } from './shopService.js';
 import { getActivePlatformOffers, getActiveShopOffers, getTopOffersAcrossShops, serializeOffer } from './offerService.js';
 import { getStoreInfoMap, serializeStoreInfo } from './storeInfoService.js';
+import { getShopInsights } from './analyticsService.js';
+import { getShopRatingSummary } from './ratingService.js';
+import { ShopCatalogItem } from '../models/index.js';
 
 function isAnnouncementActive(row, now = new Date()) {
   if (!row?.isActive) return false;
@@ -104,7 +107,7 @@ export async function getShopkeeperHome(user) {
   const primaryShop = shops[0] || null;
   const shopId = primaryShop?.id;
 
-  const [announcements, offers, storeInfo] = await Promise.all([
+  const [announcements, offers, storeInfo, insights, lowStockItems] = await Promise.all([
     getActiveAnnouncements(AnnouncementAudience.SHOPKEEPERS),
     shopId
       ? Offer.findAll({
@@ -114,6 +117,18 @@ export async function getShopkeeperHome(user) {
       })
       : [],
     shopId ? ShopStoreInfo.findByPk(shopId) : null,
+    shopId ? getShopInsights(shopId, { days: 30 }) : null,
+    shopId
+      ? ShopCatalogItem.findAll({
+        where: {
+          shopId,
+          trackStock: true,
+          stockQuantity: { [Op.lte]: primaryShop?.lowStockThreshold || 5 },
+        },
+        order: [['stockQuantity', 'ASC']],
+        limit: 5,
+      })
+      : [],
   ]);
 
   const activeOffers = offers
@@ -126,6 +141,8 @@ export async function getShopkeeperHome(user) {
     announcements,
     topOffers: activeOffers,
     storeInfo: serializeStoreInfo(storeInfo),
+    insights,
+    lowStockItems: lowStockItems.map((item) => item.toJSON()),
   };
 }
 
@@ -193,9 +210,10 @@ export async function getSuperAdminHome({ metric = 'revenue', limit = 10 } = {})
 
 export async function attachShopPublicInfo(shops) {
   const shopIds = shops.map((s) => s.id || s.shopId);
-  const [storeInfoMap, offersMap] = await Promise.all([
+  const [storeInfoMap, offersMap, ratingsMap] = await Promise.all([
     getStoreInfoMap(ShopStoreInfo, shopIds),
     getActiveShopOffers(Offer, shopIds, { limitPerShop: 3 }),
+    getShopRatingSummary(shopIds),
   ]);
 
   return shops.map((shop) => {
@@ -204,6 +222,7 @@ export async function attachShopPublicInfo(shops) {
       ...shop,
       storeInfo: storeInfoMap[id] || null,
       activeOffers: offersMap[id] || [],
+      rating: ratingsMap[id] || null,
     };
   });
 }

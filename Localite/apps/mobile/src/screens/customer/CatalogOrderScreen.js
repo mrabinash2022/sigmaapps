@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  TextInput,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { getVisualCatalogTheme } from '@localite/shared';
@@ -12,6 +13,9 @@ import { api } from '../../services/api';
 import ScreenLayout from '../../components/ScreenLayout';
 import VisualProductCatalog, { ALL_PRODUCTS_TAB } from '../../components/VisualProductCatalog';
 import OrderExtrasPanel from '../../components/OrderExtrasPanel';
+import AddressPicker from '../../components/AddressPicker';
+import ScheduledDeliveryPicker from '../../components/ScheduledDeliveryPicker';
+import { useCartStorage } from '../../hooks/useCartStorage';
 
 export default function CatalogOrderScreen({ route, navigation }) {
   const { shop } = route.params;
@@ -19,13 +23,19 @@ export default function CatalogOrderScreen({ route, navigation }) {
 
   const [groups, setGroups] = useState([]);
   const [activeGroup, setActiveGroup] = useState(ALL_PRODUCTS_TAB);
-  const [cart, setCart] = useState({});
+  const [searchQuery, setSearchQuery] = useState('');
+  const { cart, addItem, removeItem, clearCart } = useCartStorage(shop.id);
   const [extraText, setExtraText] = useState('');
   const [imageUri, setImageUri] = useState(null);
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [addresses, setAddresses] = useState([]);
+  const [selectedAddress, setSelectedAddress] = useState(null);
+  const [addressPickerOpen, setAddressPickerOpen] = useState(false);
+  const [scheduledWindow, setScheduledWindow] = useState(null);
+  const [wishlistIds, setWishlistIds] = useState(new Set());
 
   const load = () => {
     setLoading(true);
@@ -40,9 +50,30 @@ export default function CatalogOrderScreen({ route, navigation }) {
       .finally(() => setLoading(false));
   };
 
-  useFocusEffect(useCallback(() => { load(); }, [shop.id]));
+  useFocusEffect(useCallback(() => {
+    load();
+    api.getAddresses().then(({ addresses: rows }) => {
+      setAddresses(rows);
+      const def = rows.find((a) => a.isDefault) || rows[0];
+      if (def) setSelectedAddress(def);
+    }).catch(() => {});
+    api.getWishlistIds(shop.id)
+      .then(({ catalogItemIds }) => setWishlistIds(new Set(catalogItemIds || [])))
+      .catch(() => {});
+  }, [shop.id]));
 
-  const allItems = useMemo(() => groups.flatMap((g) => g.items || []), [groups]);
+  const filteredGroups = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return groups;
+    return groups
+      .map((group) => ({
+        ...group,
+        items: (group.items || []).filter((item) => item.name?.toLowerCase().includes(q)),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [groups, searchQuery]);
+
+  const allItems = useMemo(() => filteredGroups.flatMap((g) => g.items || []), [filteredGroups]);
 
   const cartEntries = useMemo(
     () => Object.entries(cart).filter(([, qty]) => qty > 0),
@@ -64,16 +95,21 @@ export default function CatalogOrderScreen({ route, navigation }) {
   const canSubmit = cartCount > 0 || hasExtras;
   const isClosed = shop.storeInfo?.status && !shop.storeInfo.status.isOpen;
 
-  const addItem = (itemId) => {
-    setCart((prev) => ({ ...prev, [itemId]: (prev[itemId] || 0) + 1 }));
-  };
+  const addItemHandler = (itemId) => addItem(itemId);
+  const removeItemHandler = (itemId) => removeItem(itemId);
 
-  const removeItem = (itemId) => {
-    setCart((prev) => {
-      const next = { ...prev, [itemId]: Math.max(0, (prev[itemId] || 0) - 1) };
-      if (!next[itemId]) delete next[itemId];
-      return next;
-    });
+  const toggleWishlist = async (itemId) => {
+    try {
+      if (wishlistIds.has(itemId)) {
+        await api.removeWishlistItem(itemId);
+        setWishlistIds((prev) => { const n = new Set(prev); n.delete(itemId); return n; });
+      } else {
+        await api.addWishlistItem(itemId);
+        setWishlistIds((prev) => new Set(prev).add(itemId));
+      }
+    } catch (err) {
+      Alert.alert('Error', err.message);
+    }
   };
 
   const submit = async () => {
@@ -106,7 +142,10 @@ export default function CatalogOrderScreen({ route, navigation }) {
         extraText: extraText.trim(),
         note: note.trim(),
         imageUri,
+        addressId: selectedAddress?.id,
+        scheduledWindow,
       });
+      clearCart();
       Alert.alert('Order placed!', 'Your shopkeeper will review your order.');
       navigation.replace('OrderDetail', { orderId: order.id });
     } catch (err) {
@@ -130,13 +169,31 @@ export default function CatalogOrderScreen({ route, navigation }) {
           ) : null}
         </View>
 
+        <TextInput
+          style={styles.search}
+          placeholder="Search products…"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        <TouchableOpacity style={styles.addressChip} onPress={() => setAddressPickerOpen(true)}>
+          <Text style={styles.addressChipText}>
+            Deliver to: {selectedAddress?.label || 'Default address'}
+          </Text>
+        </TouchableOpacity>
+
+        <View style={styles.scheduleWrap}>
+          <ScheduledDeliveryPicker value={scheduledWindow} onChange={setScheduledWindow} accent={theme.accent} />
+        </View>
+
         <VisualProductCatalog
-          groups={groups}
+          groups={filteredGroups}
           activeGroup={activeGroup}
           onSelectGroup={setActiveGroup}
           cart={cart}
-          onAddItem={addItem}
-          onRemoveItem={removeItem}
+          onAddItem={addItemHandler}
+          onRemoveItem={removeItemHandler}
+          wishlistIds={wishlistIds}
+          onToggleWishlist={toggleWishlist}
           accent={theme.accent}
           loading={loading}
           error={error}
@@ -180,6 +237,14 @@ export default function CatalogOrderScreen({ route, navigation }) {
           </View>
         )}
       </View>
+      <AddressPicker
+        visible={addressPickerOpen}
+        addresses={addresses}
+        selectedId={selectedAddress?.id}
+        onSelect={(addr) => { setSelectedAddress(addr); setAddressPickerOpen(false); }}
+        onClose={() => setAddressPickerOpen(false)}
+        onManage={() => { setAddressPickerOpen(false); navigation.navigate('SavedAddresses'); }}
+      />
     </ScreenLayout>
   );
 }
@@ -191,6 +256,26 @@ const styles = StyleSheet.create({
   closedBanner: { fontSize: 13, color: '#b91c1c', fontWeight: '700', marginTop: 6 },
   heroSub: { fontSize: 14, fontWeight: '600', marginTop: 4 },
   itemCount: { fontSize: 12, color: '#666', marginTop: 6, fontWeight: '600' },
+  search: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#fff',
+  },
+  addressChip: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 4,
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: '#eef8f1',
+  },
+  addressChipText: { color: '#1a7f4b', fontWeight: '600', fontSize: 13 },
+  scheduleWrap: { marginHorizontal: 16, marginBottom: 4 },
   cartBar: {
     position: 'absolute',
     left: 16,

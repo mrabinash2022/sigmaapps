@@ -13,6 +13,7 @@ import {
   syncShopVisualCatalogFlag,
   updateCatalogItem,
 } from '../services/catalogService.js';
+import { importCatalogFromCsv } from '../services/catalogImportService.js';
 import { uploadCatalogImage } from '../services/storageService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -183,6 +184,26 @@ router.patch(
       }
       await shop.update({ visualCatalogEnabled: enabled });
       res.json({ shop });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+router.post(
+  '/my/:shopId/catalog/import-csv',
+  authenticate,
+  requireRole(UserRole.ADMIN),
+  requireShopAccess,
+  async (req, res, next) => {
+    try {
+      await getOwnerShop(req.params.shopId);
+      const { csv, publish } = req.body;
+      if (!csv?.trim()) return res.status(400).json({ error: 'csv content is required' });
+      const result = await importCatalogFromCsv(req.params.shopId, csv, {
+        publish: publish === true || publish === 'true',
+      });
+      res.status(201).json(result);
     } catch (err) {
       next(err);
     }

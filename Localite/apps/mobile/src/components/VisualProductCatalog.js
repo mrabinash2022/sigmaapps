@@ -49,6 +49,8 @@ export default function VisualProductCatalog({
   cart = {},
   onAddItem,
   onRemoveItem,
+  wishlistIds,
+  onToggleWishlist,
   accent = '#1a7f4b',
   loading = false,
   error = null,
@@ -145,6 +147,8 @@ export default function VisualProductCatalog({
             accent={accent}
             onAdd={() => onAddItem(item.id)}
             onRemove={() => onRemoveItem(item.id)}
+            isWishlisted={wishlistIds?.has?.(item.id)}
+            onToggleWishlist={onToggleWishlist}
           />
         )}
       />

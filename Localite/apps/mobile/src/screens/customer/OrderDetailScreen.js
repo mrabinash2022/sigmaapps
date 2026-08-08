@@ -25,6 +25,9 @@ import { OrderSupportButton } from '../../components/OrderSupportButton';
 import CatalogOrderItems from '../../components/CatalogOrderItems';
 import FulfillmentSummary from '../../components/FulfillmentSummary';
 import { useOrderPolling } from '../../hooks/useOrderPolling';
+import RazorpayCheckout from '../../components/RazorpayCheckout';
+import { useAuth } from '../../context/AuthContext';
+import { openDirections } from '../../utils/maps';
 
 const CANCEL_REASONS = [
   'Ordered by mistake',
@@ -45,8 +48,12 @@ const STEPS = [OrderStatus.CREATED, OrderStatus.ACCEPTED, OrderStatus.SHIPPED, O
 
 export default function OrderDetailScreen({ route, navigation }) {
   const { orderId } = route.params;
+  const { user } = useAuth();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [razorpayVisible, setRazorpayVisible] = useState(false);
+  const [razorpayCheckout, setRazorpayCheckout] = useState(null);
+  const [orderRating, setOrderRating] = useState(null);
 
   const load = useCallback(({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -56,36 +63,72 @@ export default function OrderDetailScreen({ route, navigation }) {
       .finally(() => { if (!silent) setLoading(false); });
   }, [orderId]);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(useCallback(() => {
+    load();
+    api.getOrderRating(orderId).then(({ rating }) => setOrderRating(rating)).catch(() => setOrderRating(null));
+  }, [load, orderId]));
   useOrderPolling(order, load);
+
+  const startRazorpay = async () => {
+    try {
+      const checkout = await api.createRazorpayOrder(orderId);
+      setRazorpayCheckout({
+        ...checkout,
+        orderId,
+        customerName: user?.name,
+        customerPhone: user?.phone,
+      });
+      setRazorpayVisible(true);
+    } catch {
+      const { order: paid } = await api.payOrderMock(orderId);
+      setOrder(paid);
+      Alert.alert('Payment done', 'UPI payment completed (dev mock)');
+    }
+  };
 
   const selectPayment = async (method) => {
     try {
       const { order: updated } = await api.selectPayment(orderId, method);
       setOrder(updated);
       if (method === PaymentMethod.UPI_INSTANT) {
-        try {
-          await api.createRazorpayOrder(orderId);
-          Alert.alert(
-            'Razorpay',
-            'Razorpay checkout would open here. In dev mode, using mock payment.',
-            [{
-              text: 'Pay (Mock)',
-              onPress: async () => {
-                const { order: paid } = await api.payOrderMock(orderId);
-                setOrder(paid);
-              },
-            }],
-          );
-        } catch {
-          const { order: paid } = await api.payOrderMock(orderId);
-          setOrder(paid);
-          Alert.alert('Payment done', 'UPI payment completed (dev mock)');
-        }
+        await startRazorpay();
       }
     } catch (err) {
       Alert.alert('Error', err.message);
     }
+  };
+
+  const onRazorpaySuccess = async (data) => {
+    setRazorpayVisible(false);
+    try {
+      const { order: paid } = await api.verifyPayment(orderId, {
+        razorpayOrderId: data.razorpay_order_id,
+        razorpayPaymentId: data.razorpay_payment_id,
+        razorpaySignature: data.razorpay_signature,
+      });
+      setOrder(paid);
+      Alert.alert('Payment successful', 'Your UPI payment was completed.');
+    } catch (err) {
+      Alert.alert('Verification failed', err.message);
+    }
+  };
+
+  const submitRating = (stars) => {
+    Alert.alert('Rate order', `Give ${stars} star${stars === 1 ? '' : 's'}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Submit',
+        onPress: async () => {
+          try {
+            const { rating } = await api.rateOrder(orderId, stars);
+            setOrderRating(rating);
+            Alert.alert('Thanks!', 'Your rating helps other customers.');
+          } catch (err) {
+            Alert.alert('Error', err.message);
+          }
+        },
+      },
+    ]);
   };
 
   const markDelivered = async () => {
@@ -253,6 +296,13 @@ export default function OrderDetailScreen({ route, navigation }) {
           </View>
         )}
 
+        {order.isScheduled && order.scheduledWindow ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Scheduled delivery</Text>
+            <Text style={styles.body}>{order.scheduledWindow}</Text>
+          </View>
+        ) : null}
+
         <FulfillmentSummary
           order={order}
           onOpenBackorder={(id) => navigation.push('OrderDetail', { orderId: id })}
@@ -272,9 +322,26 @@ export default function OrderDetailScreen({ route, navigation }) {
         {order.finalBillAmount && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Bill amount</Text>
+            {order.discountAmount > 0 ? (
+              <>
+                <Text style={styles.body}>Subtotal: ₹{Number(order.subtotalAmount || order.finalBillAmount).toFixed(2)}</Text>
+                <Text style={styles.body}>Discount: −₹{Number(order.discountAmount).toFixed(2)}</Text>
+              </>
+            ) : null}
             <Text style={styles.amount}>₹{Number(order.finalBillAmount).toFixed(2)}</Text>
             {order.deliveryTimeWindow && (
               <Text style={styles.body}>Delivery: {order.deliveryTimeWindow}</Text>
+            )}
+            {(order.deliveryAddress || order.customer?.address) && (
+              <TouchableOpacity
+                onPress={() => openDirections({
+                  address: order.deliveryAddress || order.customer?.address,
+                  latitude: order.deliveryLatitude,
+                  longitude: order.deliveryLongitude,
+                })}
+              >
+                <Text style={styles.mapLink}>Open directions</Text>
+              </TouchableOpacity>
             )}
           </View>
         )}
@@ -323,6 +390,23 @@ export default function OrderDetailScreen({ route, navigation }) {
 
         {isDeliveredOrder(order) && (
           <>
+            {!orderRating ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Rate this order</Text>
+                <View style={styles.starsRow}>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <TouchableOpacity key={n} style={styles.starBtn} onPress={() => submitRating(n)}>
+                      <Text style={styles.starText}>★</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            ) : (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Your rating</Text>
+                <Text style={styles.body}>{'★'.repeat(orderRating.rating)} ({orderRating.rating}/5)</Text>
+              </View>
+            )}
             <TouchableOpacity
               style={styles.btn}
               onPress={() => {
@@ -352,6 +436,13 @@ export default function OrderDetailScreen({ route, navigation }) {
           </View>
         )}
       </ScrollView>
+      <RazorpayCheckout
+        visible={razorpayVisible}
+        checkout={razorpayCheckout}
+        onSuccess={onRazorpaySuccess}
+        onClose={() => setRazorpayVisible(false)}
+        onError={(msg) => { setRazorpayVisible(false); Alert.alert('Payment failed', msg); }}
+      />
     </ScreenLayout>
   );
 }
@@ -372,6 +463,10 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 14, fontWeight: '700', marginBottom: 8, color: '#333' },
   body: { fontSize: 15, color: '#444', lineHeight: 22 },
   amount: { fontSize: 24, fontWeight: '800', color: '#1a7f4b' },
+  mapLink: { color: '#1a7f4b', fontWeight: '700', marginTop: 8 },
+  starsRow: { flexDirection: 'row', gap: 8 },
+  starBtn: { padding: 8 },
+  starText: { fontSize: 28, color: '#f59e0b' },
   btn: { backgroundColor: '#1a7f4b', padding: 14, borderRadius: 10, alignItems: 'center', marginBottom: 8 },
   btnText: { color: '#fff', fontWeight: '700' },
   btnOutline: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#1a7f4b' },

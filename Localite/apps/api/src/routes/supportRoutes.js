@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { SupportTicket, SupportTicketMessage, Order, ShopUser } from '../models/index.js';
 import { TicketIssueType, TicketStatus, UserRole } from '@localite/shared';
 import { authenticate, requireRole } from '../middleware/auth.js';
+import { notifySupportTicketMessage } from '../services/orderNotificationService.js';
 
 const router = Router();
 
@@ -86,6 +87,18 @@ router.post('/create-ticket', authenticate, async (req, res, next) => {
     });
 
     const full = await SupportTicket.findByPk(ticket.id, { include: ticketIncludes });
+
+    const staff = await ShopUser.findAll({ where: { shopId: order.shopId } });
+    for (const member of staff) {
+      if (member.userId !== req.user.id) {
+        await notifySupportTicketMessage(full, {
+          sender: req.user,
+          message: body,
+          recipientUserId: member.userId,
+        }).catch(console.error);
+      }
+    }
+
     res.status(201).json({ ticket: full });
   } catch (err) {
     next(err);
@@ -129,6 +142,18 @@ router.post('/tickets/:ticketId/messages', authenticate, async (req, res, next) 
     });
 
     const full = await SupportTicket.findByPk(ticket.id, { include: ticketIncludes });
+
+    const recipientId = req.user.role === UserRole.CUSTOMER
+      ? (await ShopUser.findOne({ where: { shopId: ticket.shopId, role: 'owner' } }))?.userId
+      : ticket.customerId;
+    if (recipientId && recipientId !== req.user.id) {
+      await notifySupportTicketMessage(full, {
+        sender: req.user,
+        message: message.trim(),
+        recipientUserId: recipientId,
+      }).catch(console.error);
+    }
+
     res.status(201).json({ ticket: full });
   } catch (err) {
     next(err);

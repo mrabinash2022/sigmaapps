@@ -10,10 +10,12 @@ import {
   getUnavailableLines,
   getFulfilledLines,
   normalizeFulfillmentInput,
+  parseDeliveryReminderAt,
 } from '@localite/shared';
 import { buildVisualOrderText, applyFulfillmentStockAdjustments } from './catalogService.js';
 import { recordOrderEvent } from './orderService.js';
 import { notifyOrderUpdate } from './notificationService.js';
+import { resolveOrderPricing } from './orderPricingService.js';
 
 function buildBackorderCatalogPayload(unavailableLines) {
   const catalogItems = unavailableLines
@@ -56,6 +58,8 @@ export async function acceptOrderWithFulfillment({
   shopNote,
   createBackorder,
   actorId,
+  offerId,
+  subtotalAmount,
 }) {
   const normalized = normalizeFulfillmentInput(fulfillmentLines);
   const unavailable = getUnavailableLines(normalized);
@@ -80,11 +84,28 @@ export async function acceptOrderWithFulfillment({
     finalBillAmount,
   });
 
+  const subtotal = subtotalAmount != null ? Number(subtotalAmount) : Number(finalBillAmount);
+  const pricing = await resolveOrderPricing({
+    shopId: order.shopId,
+    subtotalAmount: subtotal,
+    offerId,
+  });
+
+  const deliveryReminderAt = parseDeliveryReminderAt(deliveryTimeWindow);
+
   await order.update({
     orderStatus: OrderStatus.ACCEPTED,
-    finalBillAmount,
+    finalBillAmount: pricing.finalBillAmount,
+    subtotalAmount: pricing.subtotalAmount,
+    discountAmount: pricing.discountAmount,
+    appliedOfferId: pricing.appliedOfferId,
     deliveryTimeWindow,
-    fulfillmentPayload,
+    deliveryReminderAt,
+    deliveryReminderSentAt: null,
+    fulfillmentPayload: {
+      ...fulfillmentPayload,
+      appliedOffer: pricing.appliedOffer || null,
+    },
   });
 
   await applyFulfillmentStockAdjustments(normalized);
@@ -130,7 +151,7 @@ export async function acceptOrderWithFulfillment({
     fromStatus: OrderStatus.CREATED,
     toStatus: OrderStatus.ACCEPTED,
     actorId,
-    note: `Accepted. Amount: ₹${finalBillAmount}, Window: ${deliveryTimeWindow}.${unavailableNote}${backorderNote}`,
+    note: `Accepted. Amount: ₹${pricing.finalBillAmount}${pricing.discountAmount ? ` (discount ₹${pricing.discountAmount})` : ''}, Window: ${deliveryTimeWindow}.${unavailableNote}${backorderNote}`,
   });
 
   return { order, backorderOrder, fulfillmentPayload };
@@ -141,6 +162,8 @@ export async function activateBackorderOrder({
   finalBillAmount,
   deliveryTimeWindow,
   actorId,
+  offerId,
+  subtotalAmount,
 }) {
   if (order.orderStatus !== OrderStatus.BACKORDER_WAITING) {
     const err = new Error('Order is not waiting for backorder stock');
@@ -149,14 +172,28 @@ export async function activateBackorderOrder({
   }
 
   const fromStatus = order.orderStatus;
+  const subtotal = subtotalAmount != null ? Number(subtotalAmount) : Number(finalBillAmount);
+  const pricing = await resolveOrderPricing({
+    shopId: order.shopId,
+    subtotalAmount: subtotal,
+    offerId,
+  });
+  const deliveryReminderAt = parseDeliveryReminderAt(deliveryTimeWindow);
+
   await order.update({
     orderStatus: OrderStatus.ACCEPTED,
-    finalBillAmount,
+    finalBillAmount: pricing.finalBillAmount,
+    subtotalAmount: pricing.subtotalAmount,
+    discountAmount: pricing.discountAmount,
+    appliedOfferId: pricing.appliedOfferId,
     deliveryTimeWindow,
+    deliveryReminderAt,
+    deliveryReminderSentAt: null,
     fulfillmentPayload: {
       ...(order.fulfillmentPayload || {}),
       activatedAt: new Date().toISOString(),
       backorderReady: true,
+      appliedOffer: pricing.appliedOffer || null,
     },
   });
 
@@ -165,7 +202,7 @@ export async function activateBackorderOrder({
     fromStatus,
     toStatus: OrderStatus.ACCEPTED,
     actorId,
-    note: `Backorder items now available. Amount: ₹${finalBillAmount}, Window: ${deliveryTimeWindow}`,
+    note: `Backorder items now available. Amount: ₹${pricing.finalBillAmount}, Window: ${deliveryTimeWindow}`,
   });
 
   const { getOrderWithDetails } = await import('./orderService.js');

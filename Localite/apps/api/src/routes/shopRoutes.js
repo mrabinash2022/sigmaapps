@@ -260,15 +260,118 @@ router.patch('/my/:shopId', authenticate, requireRole(UserRole.ADMIN), async (re
       return res.status(404).json({ error: 'Shop not found' });
     }
 
-    const { phone, address, itemTypes, description } = req.body;
+    const { phone, address, itemTypes, description, latitude, longitude, deliveryRadiusKm, lowStockThreshold } = req.body;
     const updates = {};
     if (phone) updates.phone = phone;
     if (address) updates.address = address;
     if (itemTypes !== undefined) updates.itemTypes = itemTypes;
     if (description !== undefined) updates.description = description;
+    if (latitude !== undefined) updates.latitude = latitude;
+    if (longitude !== undefined) updates.longitude = longitude;
+    if (deliveryRadiusKm !== undefined) updates.deliveryRadiusKm = deliveryRadiusKm;
+    if (lowStockThreshold !== undefined) updates.lowStockThreshold = lowStockThreshold;
 
     await shop.update(updates);
     res.json({ shop });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/my/:shopId/staff', authenticate, requireRole(UserRole.ADMIN), async (req, res, next) => {
+  try {
+    const link = await ShopUser.findOne({ where: { userId: req.user.id, shopId: req.params.shopId } });
+    if (!link) return res.status(403).json({ error: 'Not your shop' });
+
+    const staff = await ShopUser.findAll({
+      where: { shopId: req.params.shopId },
+      include: [{ association: 'user', attributes: ['id', 'name', 'phone', 'email'] }],
+      order: [['createdAt', 'ASC']],
+    });
+    res.json({ staff });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/my/:shopId/staff/invite', authenticate, requireRole(UserRole.ADMIN), async (req, res, next) => {
+  try {
+    const ownerLink = await ShopUser.findOne({ where: { userId: req.user.id, shopId: req.params.shopId } });
+    if (!ownerLink || ownerLink.role !== 'owner') {
+      return res.status(403).json({ error: 'Only shop owners can invite staff' });
+    }
+
+    const { phone, name } = req.body;
+    if (!phone?.trim()) return res.status(400).json({ error: 'Staff phone is required' });
+
+    const { User } = await import('../models/index.js');
+    const { findOwnerByPhone } = await import('../services/shopService.js');
+    let user = await findOwnerByPhone(User, phone.trim());
+    if (!user) {
+      user = await User.create({
+        name: name?.trim() || 'Shop Staff',
+        phone: phone.trim(),
+        role: UserRole.ADMIN,
+        isOnboarded: true,
+      });
+    } else if (user.role === UserRole.CUSTOMER) {
+      await user.update({ role: UserRole.ADMIN, isOnboarded: true });
+    }
+
+    const [staffLink] = await ShopUser.findOrCreate({
+      where: { shopId: req.params.shopId, userId: user.id },
+      defaults: { role: 'staff' },
+    });
+    if (staffLink.role === 'owner') {
+      return res.status(400).json({ error: 'This user is already the shop owner' });
+    }
+
+    res.status(201).json({
+      staff: {
+        id: staffLink.id,
+        role: staffLink.role,
+        user: { id: user.id, name: user.name, phone: user.phone },
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/my/:shopId/staff/:userId', authenticate, requireRole(UserRole.ADMIN), async (req, res, next) => {
+  try {
+    const ownerLink = await ShopUser.findOne({ where: { userId: req.user.id, shopId: req.params.shopId } });
+    if (!ownerLink || ownerLink.role !== 'owner') {
+      return res.status(403).json({ error: 'Only shop owners can remove staff' });
+    }
+
+    const removed = await ShopUser.destroy({
+      where: { shopId: req.params.shopId, userId: req.params.userId, role: 'staff' },
+    });
+    if (!removed) return res.status(404).json({ error: 'Staff member not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/my/:shopId/low-stock', authenticate, requireRole(UserRole.ADMIN), async (req, res, next) => {
+  try {
+    const link = await ShopUser.findOne({ where: { userId: req.user.id, shopId: req.params.shopId } });
+    if (!link) return res.status(403).json({ error: 'Not your shop' });
+
+    const shop = await Shop.findByPk(req.params.shopId);
+    const threshold = Number(shop?.lowStockThreshold || 5);
+    const items = await ShopCatalogItem.findAll({
+      where: {
+        shopId: req.params.shopId,
+        trackStock: true,
+        stockQuantity: { [Op.lte]: threshold },
+      },
+      order: [['stockQuantity', 'ASC']],
+      limit: 50,
+    });
+    res.json({ threshold, items });
   } catch (err) {
     next(err);
   }

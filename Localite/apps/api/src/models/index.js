@@ -14,6 +14,9 @@ import ShopStoreInfo from './ShopStoreInfo.js';
 import Offer from './Offer.js';
 import PlatformAnnouncement from './PlatformAnnouncement.js';
 import CustomerFavoriteShop from './CustomerFavoriteShop.js';
+import UserAddress from './UserAddress.js';
+import OrderRating from './OrderRating.js';
+import CustomerWishlistItem from './CustomerWishlistItem.js';
 
 // Area ↔ Shop
 Area.hasMany(Shop, { foreignKey: 'areaId', as: 'shops' });
@@ -102,6 +105,24 @@ Shop.belongsToMany(User, {
 CustomerFavoriteShop.belongsTo(Shop, { foreignKey: 'shopId', as: 'shop' });
 CustomerFavoriteShop.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
+User.hasMany(UserAddress, { foreignKey: 'userId', as: 'addresses' });
+UserAddress.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+UserAddress.belongsTo(Area, { foreignKey: 'areaId', as: 'area' });
+
+Order.hasOne(OrderRating, { foreignKey: 'orderId', as: 'rating' });
+OrderRating.belongsTo(Order, { foreignKey: 'orderId', as: 'order' });
+User.hasMany(OrderRating, { foreignKey: 'customerId', as: 'orderRatings' });
+OrderRating.belongsTo(User, { foreignKey: 'customerId', as: 'customer' });
+Shop.hasMany(OrderRating, { foreignKey: 'shopId', as: 'ratings' });
+OrderRating.belongsTo(Shop, { foreignKey: 'shopId', as: 'shop' });
+
+User.hasMany(CustomerWishlistItem, { foreignKey: 'userId', as: 'wishlistItems' });
+CustomerWishlistItem.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+Shop.hasMany(CustomerWishlistItem, { foreignKey: 'shopId', as: 'wishlistedBy' });
+CustomerWishlistItem.belongsTo(Shop, { foreignKey: 'shopId', as: 'shop' });
+ShopCatalogItem.hasMany(CustomerWishlistItem, { foreignKey: 'catalogItemId', as: 'wishlistEntries' });
+CustomerWishlistItem.belongsTo(ShopCatalogItem, { foreignKey: 'catalogItemId', as: 'catalogItem' });
+
 export {
   Area,
   Shop,
@@ -119,4 +140,7 @@ export {
   Offer,
   PlatformAnnouncement,
   CustomerFavoriteShop,
+  UserAddress,
+  OrderRating,
+  CustomerWishlistItem,
 };

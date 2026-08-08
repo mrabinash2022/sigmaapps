@@ -16,6 +16,9 @@ import {
 } from './catalogService.js';
 import { getOrderWithDetails, recordOrderEvent } from './orderService.js';
 import { notifyOrderUpdate } from './notificationService.js';
+import { resolveDeliverySnapshot } from './addressService.js';
+import { assertShopAcceptingOrders } from './storeInfoService.js';
+import { isWithinDeliveryRadius } from '@localite/shared';
 
 function extractReorderContent(sourceOrder) {
   const payload = parseCatalogPayload(sourceOrder);
@@ -68,7 +71,7 @@ export function assertCanReorder(sourceOrder) {
   }
 }
 
-export async function createOrderFromReorder(sourceOrder, customerId) {
+export async function createOrderFromReorder(sourceOrder, customerId, options = {}) {
   assertCanReorder(sourceOrder);
 
   const shop = await Shop.findByPk(sourceOrder.shopId);
@@ -78,7 +81,42 @@ export async function createOrderFromReorder(sourceOrder, customerId) {
     throw err;
   }
 
-  const { cartItems, extraText, imageUrl, note } = extractReorderContent(sourceOrder);
+  let { cartItems, extraText, imageUrl, note } = extractReorderContent(sourceOrder);
+
+  if (options.items?.length) {
+    cartItems = options.items.map((item) => ({
+      catalogItemId: item.catalogItemId,
+      name: item.name,
+      quantity: Number(item.quantity) || 1,
+      unitPrice: item.unitPrice,
+      sizeLabel: item.sizeLabel,
+      unit: item.unit,
+      imageUrl: item.imageUrl,
+    }));
+  }
+
+  const deliveryFields = await resolveDeliverySnapshot(customerId, {
+    addressId: options.addressId,
+    deliveryAddress: options.deliveryAddress,
+    deliveryAreaId: options.deliveryAreaId,
+    deliveryLatitude: options.deliveryLatitude,
+    deliveryLongitude: options.deliveryLongitude,
+  });
+
+  if (shop.deliveryRadiusKm) {
+    const ok = isWithinDeliveryRadius(
+      shop.latitude,
+      shop.longitude,
+      shop.deliveryRadiusKm,
+      deliveryFields.deliveryLatitude,
+      deliveryFields.deliveryLongitude,
+    );
+    if (!ok) {
+      const err = new Error(`This shop only delivers within ${shop.deliveryRadiusKm} km`);
+      err.statusCode = 400;
+      throw err;
+    }
+  }
 
   const catalogPayload = cartItems.length
     ? await buildCatalogOrderPayload(shop.id, cartItems)
@@ -120,6 +158,7 @@ export async function createOrderFromReorder(sourceOrder, customerId) {
     catalogPayload: storedPayload,
     orderStatus: OrderStatus.CREATED,
     paymentStatus: PaymentStatus.PENDING,
+    ...deliveryFields,
   });
 
   await recordOrderEvent({

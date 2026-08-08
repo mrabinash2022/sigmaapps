@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import SuperAdminScreen from './SuperAdminScreen';
 import SuperAdminUsersScreen from './SuperAdminUsersScreen';
+import PlatformAnalyticsScreen from './PlatformAnalyticsScreen';
 import ScreenLayout from '../../components/ScreenLayout';
 import { useTheme } from '../../context/ThemeContext';
 import { createAdminStyles } from '../../theme/adminScreenStyles';
@@ -9,6 +10,7 @@ import { createAdminStyles } from '../../theme/adminScreenStyles';
 const MAIN_TABS = [
   { key: 'shops', label: 'Shops' },
   { key: 'users', label: 'Users' },
+  { key: 'analytics', label: 'Analytics' },
 ];
 
 export default function SuperAdminDashboard() {
@@ -31,7 +33,7 @@ export default function SuperAdminDashboard() {
           ))}
         </View>
         <View style={styles.content}>
-          {tab === 'shops' ? <SuperAdminScreen /> : <SuperAdminUsersScreen />}
+          {tab === 'shops' ? <SuperAdminScreen /> : tab === 'users' ? <SuperAdminUsersScreen /> : <PlatformAnalyticsScreen />}
         </View>
       </View>
     </ScreenLayout>

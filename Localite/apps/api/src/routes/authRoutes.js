@@ -291,11 +291,13 @@ router.get('/me', authenticate, async (req, res, next) => {
 
 router.patch('/profile', authenticate, async (req, res, next) => {
   try {
-    const { name, address, areaId, email } = req.body;
+    const { name, address, areaId, email, smsNotificationsEnabled, whatsappNotificationsEnabled } = req.body;
     const updates = {};
     if (name) updates.name = name;
     if (address !== undefined) updates.address = address;
     if (areaId !== undefined) updates.areaId = areaId;
+    if (smsNotificationsEnabled !== undefined) updates.smsNotificationsEnabled = Boolean(smsNotificationsEnabled);
+    if (whatsappNotificationsEnabled !== undefined) updates.whatsappNotificationsEnabled = Boolean(whatsappNotificationsEnabled);
     if (email !== undefined) {
       const normalizedEmail = normalizeEmail(email);
       if (!normalizedEmail || !isValidEmail(normalizedEmail)) {

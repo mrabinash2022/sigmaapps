@@ -23,6 +23,8 @@ export default function ReorderConfirmScreen({ route, navigation }) {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [addresses, setAddresses] = useState([]);
+  const [selectedAddress, setSelectedAddress] = useState(null);
 
   const load = () => {
     setLoading(true);
@@ -30,6 +32,12 @@ export default function ReorderConfirmScreen({ route, navigation }) {
       .then(({ order: o }) => setOrder(o))
       .catch((err) => Alert.alert('Error', err.message, [{ text: 'OK', onPress: () => navigation.goBack() }]))
       .finally(() => setLoading(false));
+    api.getAddresses()
+      .then(({ addresses: rows }) => {
+        setAddresses(rows);
+        setSelectedAddress(rows.find((a) => a.isDefault) || rows[0] || null);
+      })
+      .catch(() => {});
   };
 
   useFocusEffect(useCallback(() => { load(); }, [orderId]));
@@ -37,7 +45,9 @@ export default function ReorderConfirmScreen({ route, navigation }) {
   const confirmReorder = async () => {
     setSubmitting(true);
     try {
-      const { order: newOrder } = await api.reorderOrder(orderId);
+      const { order: newOrder } = await api.reorderOrder(orderId, {
+        addressId: selectedAddress?.id,
+      });
       Alert.alert('Order placed!', 'Your reorder has been sent to the shop.');
       navigation.replace('OrderDetail', { orderId: newOrder.id });
     } catch (err) {
@@ -79,6 +89,9 @@ export default function ReorderConfirmScreen({ route, navigation }) {
         <Text style={styles.hint}>
           The same items from your previous order will be sent to the shop. Catalog prices will use current rates.
         </Text>
+        {selectedAddress ? (
+          <Text style={styles.address}>Deliver to: {selectedAddress.label} — {selectedAddress.address}</Text>
+        ) : null}
 
         <View style={styles.card}>
           <CatalogOrderItems order={order} />
@@ -109,6 +122,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '800', color: '#111' },
   shop: { fontSize: 16, fontWeight: '700', color: '#1a7f4b', marginTop: 4 },
   hint: { fontSize: 14, color: '#666', marginTop: 10, marginBottom: 16, lineHeight: 20 },
+  address: { fontSize: 13, color: '#1a7f4b', marginBottom: 12, fontWeight: '600' },
   card: {
     backgroundColor: '#fff',
     borderRadius: 12,

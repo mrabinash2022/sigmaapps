@@ -110,6 +110,17 @@ const Shop = sequelize.define('Shop', {
     defaultValue: false,
     field: 'visual_catalog_enabled',
   },
+  deliveryRadiusKm: {
+    type: DataTypes.DECIMAL(6, 2),
+    allowNull: true,
+    field: 'delivery_radius_km',
+  },
+  lowStockThreshold: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: 5,
+    field: 'low_stock_threshold',
+  },
 });
 
 export default Shop;

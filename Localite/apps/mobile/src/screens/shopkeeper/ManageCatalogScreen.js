@@ -9,6 +9,9 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Modal,
+  TextInput,
+  ScrollView,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { CatalogPublishStatus } from '@localite/shared';
@@ -65,6 +68,9 @@ export default function ManageCatalogScreen({ navigation }) {
   const [stats, setStats] = useState({ publishedCount: 0, draftCount: 0, visualCatalogEnabled: false });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [csvModalOpen, setCsvModalOpen] = useState(false);
+  const [csvText, setCsvText] = useState('');
+  const [importing, setImporting] = useState(false);
 
   const loadCatalog = useCallback(async () => {
     if (!shopId) return;
@@ -149,6 +155,22 @@ export default function ManageCatalogScreen({ navigation }) {
     ]);
   };
 
+  const importCsv = async () => {
+    if (!csvText.trim()) return Alert.alert('Paste CSV', 'Add CSV content with header: name,itemGroup,price');
+    setImporting(true);
+    try {
+      const result = await api.importCatalogCsv(shopId, csvText, false);
+      setCsvModalOpen(false);
+      setCsvText('');
+      await loadCatalog();
+      Alert.alert('Imported', `${result.imported} product(s) added as drafts.`);
+    } catch (err) {
+      Alert.alert('Import failed', err.message);
+    } finally {
+      setImporting(false);
+    }
+  };
+
   if (shopLoading || loading) {
     return (
       <ScreenLayout>
@@ -198,6 +220,9 @@ export default function ManageCatalogScreen({ navigation }) {
           <Text style={styles.hint}>
             Add products with photos and prices. Publish when ready — customers can then select them when ordering.
           </Text>
+          <TouchableOpacity style={styles.importBtn} onPress={() => setCsvModalOpen(true)}>
+            <Text style={styles.importBtnText}>Import CSV</Text>
+          </TouchableOpacity>
         </View>
 
         <FlatList
@@ -236,6 +261,29 @@ export default function ManageCatalogScreen({ navigation }) {
         >
           <Text style={styles.fabText}>+ Add product</Text>
         </TouchableOpacity>
+
+        <Modal visible={csvModalOpen} animationType="slide" onRequestClose={() => setCsvModalOpen(false)}>
+          <View style={styles.csvModal}>
+            <Text style={styles.csvTitle}>Import products from CSV</Text>
+            <Text style={styles.csvHint}>Header: name,itemGroup,price,sizeLabel,unit,description,trackStock,stockQuantity</Text>
+            <ScrollView style={{ flex: 1 }}>
+              <TextInput
+                style={styles.csvInput}
+                multiline
+                value={csvText}
+                onChangeText={setCsvText}
+                placeholder={'name,itemGroup,price\nBasmati Rice,staples,120,1kg,kg,,true,50'}
+                textAlignVertical="top"
+              />
+            </ScrollView>
+            <TouchableOpacity style={styles.importSubmit} onPress={importCsv} disabled={importing}>
+              <Text style={styles.fabText}>{importing ? 'Importing…' : 'Import as drafts'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.importCancel} onPress={() => setCsvModalOpen(false)}>
+              <Text style={styles.importCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </Modal>
       </View>
     </ScreenLayout>
   );
@@ -295,6 +343,37 @@ function createStyles(colors) {
       elevation: 4,
     },
     fabText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+    importBtn: {
+      marginTop: 10,
+      alignSelf: 'flex-start',
+      borderWidth: 1,
+      borderColor: colors.brand,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    importBtnText: { color: colors.brand, fontWeight: '700' },
+    csvModal: { flex: 1, backgroundColor: colors.background, padding: 16 },
+    csvTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 8 },
+    csvHint: { fontSize: 12, color: colors.textMuted, marginBottom: 12 },
+    csvInput: {
+      minHeight: 220,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      padding: 12,
+      backgroundColor: colors.card,
+      color: colors.text,
+    },
+    importSubmit: {
+      backgroundColor: colors.brand,
+      padding: 14,
+      borderRadius: 10,
+      alignItems: 'center',
+      marginTop: 12,
+    },
+    importCancel: { padding: 14, alignItems: 'center' },
+    importCancelText: { color: colors.textSecondary, fontWeight: '600' },
     emptyTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
     emptySub: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginTop: 8 },
     primaryBtn: { marginTop: 16, backgroundColor: colors.brandDark, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10 },

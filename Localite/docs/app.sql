@@ -7,6 +7,8 @@
 --
 -- CHANGELOG
 -- ---------
+-- 2026-08-08  v0.10 Scheduled orders; OrderRatings; CustomerWishlistItems; catalog CSV import
+-- 2026-08-08  v0.9  Saved addresses; order delivery snapshot; offer discounts; COD collection; delivery radius; SMS/WhatsApp prefs; delivery reminders
 -- 2026-08-08  v0.8  Cancelled order status; cancellation_reason, cancelled_at; catalog stock (track_stock, stock_quantity)
 -- 2026-08-06  v0.7  Partial fulfillment: Backorder_Waiting status; parent_order_id, fulfillment_payload on Orders
 -- 2026-08-06  v0.6  Orders Returned status; Refund_Pending/Refunded payment; return_reason, razorpay_refund_id

@@ -1,6 +1,7 @@
 import { Expo } from 'expo-server-sdk';
 import { PaymentStatus, formatFulfillmentSummary } from '@localite/shared';
 import { UserDevice } from '../models/index.js';
+import { notifyOrderStatusFallback } from './orderNotificationService.js';
 
 const expo = new Expo();
 
@@ -137,6 +138,9 @@ export async function notifyOrderUpdate(order, event) {
       ...cfg.customer,
       data: { orderId: order.id, screen: 'OrderDetail' },
     });
+    if (cfg.customer.body) {
+      await notifyOrderStatusFallback(order, event, `Localite: ${cfg.customer.body}`);
+    }
   }
   if (cfg.admin && order.shop) {
     const { ShopUser } = await import('../models/index.js');

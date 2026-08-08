@@ -105,6 +105,72 @@ const Order = sequelize.define('Order', {
     allowNull: true,
     field: 'cancelled_at',
   },
+  deliveryAddress: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    field: 'delivery_address',
+  },
+  deliveryAreaId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    field: 'delivery_area_id',
+  },
+  deliveryLatitude: {
+    type: DataTypes.DECIMAL(10, 7),
+    allowNull: true,
+    field: 'delivery_latitude',
+  },
+  deliveryLongitude: {
+    type: DataTypes.DECIMAL(10, 7),
+    allowNull: true,
+    field: 'delivery_longitude',
+  },
+  appliedOfferId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    field: 'applied_offer_id',
+  },
+  subtotalAmount: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    field: 'subtotal_amount',
+  },
+  discountAmount: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    field: 'discount_amount',
+  },
+  codCollectedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'cod_collected_at',
+  },
+  deliveryReminderAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'delivery_reminder_at',
+  },
+  deliveryReminderSentAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'delivery_reminder_sent_at',
+  },
+  isScheduled: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    field: 'is_scheduled',
+  },
+  scheduledFor: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'scheduled_for',
+  },
+  scheduledWindow: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    field: 'scheduled_window',
+  },
 });
 
 export default Order;

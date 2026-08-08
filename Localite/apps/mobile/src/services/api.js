@@ -332,11 +332,14 @@ export const api = {
     ),
 
   // Orders
-  submitOrder: async (shopId, textPayload, imageUri) => {
+  submitOrder: async (shopId, textPayload, imageUri, options = {}) => {
     await ensureTokensLoaded();
     const formData = new FormData();
     formData.append('shopId', shopId);
     if (textPayload) formData.append('textPayload', textPayload);
+    if (options.addressId) formData.append('addressId', options.addressId);
+    if (options.scheduledWindow) formData.append('scheduledWindow', options.scheduledWindow);
+    if (options.scheduledFor) formData.append('scheduledFor', options.scheduledFor);
     if (imageUri) {
       const filename = imageUri.split('/').pop();
       formData.append('image', { uri: imageUri, name: filename, type: 'image/jpeg' });
@@ -355,13 +358,15 @@ export const api = {
       { method: 'POST', body: JSON.stringify({ shopId, items, note }) },
       invalidateOrdersCache,
     ),
-  submitVisualOrder: async (shopId, { items = [], extraText = '', note = '', imageUri = null } = {}) => {
+  submitVisualOrder: async (shopId, { items = [], extraText = '', note = '', imageUri = null, addressId = null, scheduledWindow = null } = {}) => {
     await ensureTokensLoaded();
     const formData = new FormData();
     formData.append('shopId', shopId);
     if (items.length) formData.append('items', JSON.stringify(items));
     if (extraText) formData.append('extraText', extraText);
     if (note) formData.append('note', note);
+    if (addressId) formData.append('addressId', addressId);
+    if (scheduledWindow) formData.append('scheduledWindow', scheduledWindow);
     if (imageUri) {
       const filename = imageUri.split('/').pop();
       formData.append('image', { uri: imageUri, name: filename, type: 'image/jpeg' });
@@ -380,7 +385,7 @@ export const api = {
     requestCached(`/api/orders/shop/${shopId}`, MobileCacheTTL.SHOP_ORDERS_MS, { force }),
   getOrder: (orderId, { force = false } = {}) =>
     requestCached(`/api/orders/${orderId}`, MobileCacheTTL.ORDER_DETAIL_MS, { force }),
-  acceptOrder: (orderId, finalBillAmount, deliveryTimeWindow, fulfillment, createBackorder) =>
+  acceptOrder: (orderId, finalBillAmount, deliveryTimeWindow, fulfillment, createBackorder, subtotalAmount, offerId) =>
     mutateAndInvalidate(
       `/api/orders/transition/accept/${orderId}`,
       {
@@ -390,6 +395,8 @@ export const api = {
           deliveryTimeWindow,
           fulfillment,
           createBackorder,
+          subtotalAmount,
+          offerId,
         }),
       },
       invalidateOrdersCache,
@@ -461,11 +468,72 @@ export const api = {
       invalidateOrdersCache,
     ),
 
-  reorderOrder: (orderId) =>
+  reorderOrder: (orderId, body = {}) =>
     mutateAndInvalidate(
       `/api/orders/reorder/${orderId}`,
-      { method: 'POST' },
+      { method: 'POST', body: JSON.stringify(body) },
       invalidateOrdersCache,
+    ),
+
+  collectCod: (orderId) =>
+    mutateAndInvalidate(
+      `/api/orders/transition/cod-collect/${orderId}`,
+      { method: 'PATCH' },
+      invalidateOrdersCache,
+    ),
+
+  previewOrderPricing: (shopId, subtotalAmount, offerId) =>
+    request('/api/orders/pricing-preview', {
+      method: 'POST',
+      body: JSON.stringify({ shopId, subtotalAmount, offerId }),
+    }),
+
+  getAddresses: () => request('/api/addresses'),
+  createAddress: (body) => request('/api/addresses', { method: 'POST', body: JSON.stringify(body) }),
+  updateAddress: (addressId, body) =>
+    request(`/api/addresses/${addressId}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  deleteAddress: (addressId) => request(`/api/addresses/${addressId}`, { method: 'DELETE' }),
+
+  updateMyShop: (shopId, body) =>
+    mutateAndInvalidate(
+      `/api/shops/my/${shopId}`,
+      { method: 'PATCH', body: JSON.stringify(body) },
+      invalidateHomeCache,
+    ),
+
+  getShopStaff: (shopId) => request(`/api/shops/my/${shopId}/staff`),
+  inviteShopStaff: (shopId, body) =>
+    request(`/api/shops/my/${shopId}/staff/invite`, { method: 'POST', body: JSON.stringify(body) }),
+  removeShopStaff: (shopId, userId) =>
+    request(`/api/shops/my/${shopId}/staff/${userId}`, { method: 'DELETE' }),
+
+  getShopLowStock: (shopId) => request(`/api/shops/my/${shopId}/low-stock`),
+
+  getPlatformAnalytics: ({ days = 30, force = false } = {}) =>
+    requestCached(`/api/analytics/platform${buildQuery({ days })}`, MobileCacheTTL.HOME_MS, { force }),
+
+  getShopInsights: (shopId, { days = 30 } = {}) =>
+    request(`/api/analytics/shop/${shopId}${buildQuery({ days })}`),
+
+  rateOrder: (orderId, rating, comment) =>
+    request(`/api/ratings/orders/${orderId}`, {
+      method: 'POST',
+      body: JSON.stringify({ rating, comment }),
+    }),
+  getOrderRating: (orderId) => request(`/api/ratings/orders/${orderId}`),
+
+  getWishlist: () => request('/api/wishlist'),
+  getWishlistIds: (shopId) => request(`/api/wishlist/ids${buildQuery({ shopId })}`),
+  addWishlistItem: (catalogItemId) =>
+    request('/api/wishlist', { method: 'POST', body: JSON.stringify({ catalogItemId }) }),
+  removeWishlistItem: (catalogItemId) =>
+    request(`/api/wishlist/${catalogItemId}`, { method: 'DELETE' }),
+
+  importCatalogCsv: (shopId, csv, publish = false) =>
+    mutateAndInvalidate(
+      `/api/shops/my/${shopId}/catalog/import-csv`,
+      { method: 'POST', body: JSON.stringify({ csv, publish }) },
+      () => invalidateShopCatalogCache(shopId),
     ),
 
   // Support

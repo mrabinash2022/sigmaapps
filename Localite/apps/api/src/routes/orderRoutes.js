@@ -14,6 +14,8 @@ import {
   hasUnavailableItems,
   buildVisualOrderPayload,
   canCustomerCancelOrder,
+  isWithinDeliveryRadius,
+  buildScheduledFields,
 } from '@localite/shared';
 import { authenticate, requireRole, requireOnboarded } from '../middleware/auth.js';
 import {
@@ -42,6 +44,8 @@ import {
   refundPayment,
   verifyRazorpaySignature,
 } from '../services/razorpayService.js';
+import { resolveDeliverySnapshot } from '../services/addressService.js';
+import { resolveOrderPricing } from '../services/orderPricingService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '../../uploads');
@@ -87,6 +91,32 @@ async function notifyAfterUpdate(orderId, event) {
   return order;
 }
 
+async function buildDeliveryFields(userId, body) {
+  return resolveDeliverySnapshot(userId, {
+    addressId: body.addressId,
+    deliveryAddress: body.deliveryAddress,
+    deliveryAreaId: body.deliveryAreaId,
+    deliveryLatitude: body.deliveryLatitude,
+    deliveryLongitude: body.deliveryLongitude,
+  });
+}
+
+async function assertDeliveryInRadius(shop, deliveryFields) {
+  if (!shop.deliveryRadiusKm) return;
+  const ok = isWithinDeliveryRadius(
+    shop.latitude,
+    shop.longitude,
+    shop.deliveryRadiusKm,
+    deliveryFields.deliveryLatitude,
+    deliveryFields.deliveryLongitude,
+  );
+  if (!ok) {
+    const err = new Error(`This shop only delivers within ${shop.deliveryRadiusKm} km`);
+    err.statusCode = 400;
+    throw err;
+  }
+}
+
 router.post(
   '/submit-flexible-order',
   authenticate,
@@ -103,6 +133,9 @@ router.post(
         return res.status(404).json({ error: 'Shop not found' });
       }
       await assertShopAcceptingOrders(ShopStoreInfo, shopId);
+      const deliveryFields = await buildDeliveryFields(req.user.id, req.body);
+      await assertDeliveryInRadius(shop, deliveryFields);
+      const scheduledFields = buildScheduledFields(req.body);
 
       let orderType = OrderType.TEXT_LIST;
       let imagePayloadUrl = null;
@@ -128,6 +161,8 @@ router.post(
         catalogPayload,
         orderStatus: OrderStatus.CREATED,
         paymentStatus: PaymentStatus.PENDING,
+        ...deliveryFields,
+        ...scheduledFields,
       });
 
       await recordOrderEvent({
@@ -162,6 +197,9 @@ router.post(
         return res.status(404).json({ error: 'Shop not found' });
       }
       await assertShopAcceptingOrders(ShopStoreInfo, shopId);
+      const deliveryFields = await buildDeliveryFields(req.user.id, req.body);
+      await assertDeliveryInRadius(shop, deliveryFields);
+      const scheduledFields = buildScheduledFields(req.body);
       if (!(await shopSupportsVisualCatalog(shop))) {
         return res.status(400).json({ error: 'This shop does not support visual catalog ordering' });
       }
@@ -210,6 +248,8 @@ router.post(
         catalogPayload: storedPayload,
         orderStatus: OrderStatus.CREATED,
         paymentStatus: PaymentStatus.PENDING,
+        ...deliveryFields,
+        ...scheduledFields,
       });
 
       const eventNote = storedPayload.items.length
@@ -247,7 +287,7 @@ router.post(
         return res.status(403).json({ error: 'Access denied' });
       }
 
-      const order = await createOrderFromReorder(sourceOrder, req.user.id);
+      const order = await createOrderFromReorder(sourceOrder, req.user.id, req.body);
       res.status(201).json({ order });
     } catch (err) {
       next(err);
@@ -334,6 +374,8 @@ router.patch('/transition/accept/:orderId', authenticate, requireRole(UserRole.A
       deliveryTimeWindow,
       fulfillment,
       createBackorder = false,
+      offerId,
+      subtotalAmount,
     } = req.body;
     validateAcceptPayload({ finalBillAmount, deliveryTimeWindow });
 
@@ -352,6 +394,8 @@ router.patch('/transition/accept/:orderId', authenticate, requireRole(UserRole.A
       shopNote: fulfillment?.shopNote,
       createBackorder: Boolean(createBackorder),
       actorId: req.user.id,
+      offerId,
+      subtotalAmount,
     });
 
     const full = await getOrderWithDetails(order.id);
@@ -651,6 +695,52 @@ router.patch('/transition/deliver/:orderId', authenticate, async (req, res, next
 
     const full = await notifyAfterUpdate(order.id, 'Delivered');
     res.json({ order: full });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/pricing-preview', authenticate, requireRole(UserRole.ADMIN, UserRole.SUPER_ADMIN), async (req, res, next) => {
+  try {
+    const { shopId, subtotalAmount, offerId } = req.body;
+    if (!shopId || !subtotalAmount) {
+      return res.status(400).json({ error: 'shopId and subtotalAmount are required' });
+    }
+    await assertShopAccess(req.user, shopId);
+    const pricing = await resolveOrderPricing({ shopId, subtotalAmount, offerId });
+    res.json({ pricing });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/transition/cod-collect/:orderId', authenticate, requireRole(UserRole.ADMIN, UserRole.SUPER_ADMIN), async (req, res, next) => {
+  try {
+    const order = await Order.findByPk(req.params.orderId);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    await assertShopAccess(req.user, order.shopId);
+
+    if (order.paymentMethod !== PaymentMethod.CASH_ON_DELIVERY) {
+      return res.status(400).json({ error: 'This order is not cash on delivery' });
+    }
+    if (order.codCollectedAt) {
+      return res.status(400).json({ error: 'Cash already marked as received' });
+    }
+
+    await order.update({
+      codCollectedAt: new Date(),
+      paymentStatus: PaymentStatus.PAID,
+    });
+
+    await recordOrderEvent({
+      orderId: order.id,
+      fromStatus: order.orderStatus,
+      toStatus: order.orderStatus,
+      actorId: req.user.id,
+      note: 'COD cash received',
+    });
+
+    res.json({ order: await getOrderWithDetails(order.id) });
   } catch (err) {
     next(err);
   }

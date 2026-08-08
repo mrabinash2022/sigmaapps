@@ -17,6 +17,7 @@ import { OrderSupportButton } from '../../components/OrderSupportButton';
 import CatalogOrderItems from '../../components/CatalogOrderItems';
 import OrderFulfillmentPanel from '../../components/OrderFulfillmentPanel';
 import FulfillmentSummary from '../../components/FulfillmentSummary';
+import { openDirections } from '../../utils/maps';
 
 const TIME_SLOTS = ['Within 1 hour', '2–4 PM', '4–6 PM', '6–8 PM'];
 
@@ -100,20 +101,32 @@ export default function ManageOrderScreen({ route, navigation }) {
       }
     }
     try {
+      const subtotal = Number(fulfillmentData?.suggestedAmount ?? amount);
       const { order: updated } = await api.acceptOrder(
         orderId,
-        Number(amount),
+        subtotal,
         timeSlot,
         fulfillmentData?.hasUnavailable
           ? { lines: fulfillmentData.lines, shopNote: fulfillmentData.shopNote }
           : undefined,
         fulfillmentData?.createBackorder,
+        subtotal,
       );
       setOrder(updated);
       const msg = fulfillmentData?.hasUnavailable
         ? 'Customer notified about unavailable items'
         : 'Customer will be notified to choose payment';
       Alert.alert('Accepted', msg);
+    } catch (err) {
+      Alert.alert('Error', err.message);
+    }
+  };
+
+  const collectCod = async () => {
+    try {
+      const { order: updated } = await api.collectCod(orderId);
+      setOrder(updated);
+      Alert.alert('Recorded', 'Cash on delivery marked as received.');
     } catch (err) {
       Alert.alert('Error', err.message);
     }
@@ -232,7 +245,16 @@ export default function ManageOrderScreen({ route, navigation }) {
           <View style={{ flex: 1 }}>
             <Text style={styles.customer}>{order.customer?.name}</Text>
             <Text style={styles.phone}>{order.customer?.phone}</Text>
-            <Text style={styles.address}>{order.customer?.address}</Text>
+            <Text style={styles.address}>{order.deliveryAddress || order.customer?.address}</Text>
+            <TouchableOpacity
+              onPress={() => openDirections({
+                address: order.deliveryAddress || order.customer?.address,
+                latitude: order.deliveryLatitude,
+                longitude: order.deliveryLongitude,
+              })}
+            >
+              <Text style={styles.mapLink}>Directions</Text>
+            </TouchableOpacity>
           </View>
           <OrderSupportButton orderId={orderId} />
         </View>
@@ -278,6 +300,14 @@ export default function ManageOrderScreen({ route, navigation }) {
             <Text style={styles.paymentHint}>
               Waiting for customer to choose a payment method.
             </Text>
+          )}
+          {order.paymentMethod === PaymentMethod.CASH_ON_DELIVERY
+            && [OrderStatus.SHIPPED, OrderStatus.DELIVERED].includes(order.orderStatus)
+            && order.paymentStatus === PaymentStatus.NOT_REQUIRED
+            && !order.codCollectedAt && (
+            <TouchableOpacity style={styles.btn} onPress={collectCod}>
+              <Text style={styles.btnText}>Mark cash received</Text>
+            </TouchableOpacity>
           )}
         </View>
       )}
@@ -442,6 +472,7 @@ const styles = StyleSheet.create({
   customer: { fontSize: 20, fontWeight: '700' },
   phone: { fontSize: 14, color: '#666' },
   address: { fontSize: 13, color: '#888', marginBottom: 8 },
+  mapLink: { color: '#1a7f4b', fontWeight: '700', marginBottom: 8 },
   status: { fontSize: 14, color: '#1a7f4b', fontWeight: '600', marginBottom: 16 },
   section: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#eee' },
   sectionTitle: { fontSize: 14, fontWeight: '700', marginBottom: 8 },

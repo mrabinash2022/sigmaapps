@@ -21,13 +21,17 @@ import MyOrdersScreen from './src/screens/customer/MyOrdersScreen';
 import MyTicketsScreen from './src/screens/customer/MyTicketsScreen';
 import OrderDetailScreen from './src/screens/customer/OrderDetailScreen';
 import ReorderConfirmScreen from './src/screens/customer/ReorderConfirmScreen';
+import WishlistScreen from './src/screens/customer/WishlistScreen';
 import ShopInboxScreen from './src/screens/shopkeeper/ShopInboxScreen';
 import SupportInboxScreen from './src/screens/shopkeeper/SupportInboxScreen';
 import CompleteInvitationScreen from './src/screens/shopkeeper/CompleteInvitationScreen';
 import ManageOrderScreen from './src/screens/shopkeeper/ManageOrderScreen';
+import ManageShopProfileScreen from './src/screens/shopkeeper/ManageShopProfileScreen';
+import StaffManagementScreen from './src/screens/shopkeeper/StaffManagementScreen';
 import ManageCatalogScreen from './src/screens/shopkeeper/ManageCatalogScreen';
 import EditCatalogItemScreen from './src/screens/shopkeeper/EditCatalogItemScreen';
 import SuperAdminDashboard from './src/screens/admin/SuperAdminDashboard';
+import PlatformAnalyticsScreen from './src/screens/admin/PlatformAnalyticsScreen';
 import CustomerHomeScreen from './src/screens/home/CustomerHomeScreen';
 import ShopkeeperHomeScreen from './src/screens/home/ShopkeeperHomeScreen';
 import SuperAdminHomeScreen from './src/screens/home/SuperAdminHomeScreen';
@@ -35,6 +39,8 @@ import ManageOffersScreen from './src/screens/home/ManageOffersScreen';
 import ManageStoreInfoScreen from './src/screens/home/ManageStoreInfoScreen';
 import ManageAnnouncementsScreen from './src/screens/home/ManageAnnouncementsScreen';
 import ProfileScreen from './src/screens/profile/ProfileScreen';
+import EditProfileScreen from './src/screens/profile/EditProfileScreen';
+import SavedAddressesScreen from './src/screens/profile/SavedAddressesScreen';
 import ProfileOrdersScreen from './src/screens/profile/ProfileOrdersScreen';
 import ReportsScreen from './src/screens/profile/ReportsScreen';
 import {
@@ -193,6 +199,9 @@ function CustomerStack() {
       <Stack.Screen name="MyTickets" component={MyTicketsScreen} options={{ title: 'Support tickets' }} />
       <Stack.Screen name="ReorderConfirm" component={ReorderConfirmScreen} options={{ title: 'Reorder' }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Edit profile' }} />
+      <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen} options={{ title: 'Saved addresses' }} />
+      <Stack.Screen name="Wishlist" component={WishlistScreen} options={{ title: 'Saved items' }} />
       <Stack.Screen name="ProfileOrders" component={ProfileOrdersScreen} options={{ title: 'Order History' }} />
       <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Reports' }} />
       <Stack.Screen name="ManageOffers" component={ManageOffersScreen} options={{ title: 'Offers & discounts' }} />
@@ -275,6 +284,9 @@ function AdminStack() {
       <Stack.Screen name="SupportInbox" component={SupportInboxScreen} options={{ title: 'Support inbox' }} />
       <Stack.Screen name="EditCatalogItem" component={EditCatalogItemScreen} options={{ title: 'Product' }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Shop Profile' }} />
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Edit profile' }} />
+      <Stack.Screen name="ManageShopProfile" component={ManageShopProfileScreen} options={{ title: 'Shop profile' }} />
+      <Stack.Screen name="StaffManagement" component={StaffManagementScreen} options={{ title: 'Staff' }} />
       <Stack.Screen name="ProfileOrders" component={ProfileOrdersScreen} options={{ title: 'Orders Served' }} />
       <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Reports' }} />
       <Stack.Screen name="ManageOffers" component={ManageOffersScreen} options={{ title: 'Offers & discounts' }} />
@@ -330,6 +342,7 @@ function SuperAdminStack() {
     <Stack.Navigator screenOptions={{ ...headerOptions, headerRight: () => <LogoutButton /> }}>
       <Stack.Screen name="Home" component={SuperAdminTabs} options={{ headerShown: false }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
+      <Stack.Screen name="PlatformAnalytics" component={PlatformAnalyticsScreen} options={{ title: 'Analytics' }} />
       <Stack.Screen name="ProfileOrders" component={ProfileOrdersScreen} options={{ title: 'Orders' }} />
       <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Reports' }} />
       <Stack.Screen

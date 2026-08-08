@@ -235,6 +235,9 @@ export default function ShopListScreen({ navigation }) {
                 ) : null}
 
                 <Text style={styles.shopName}>{item.name}</Text>
+            {item.rating?.avgRating ? (
+              <Text style={styles.rating}>★ {item.rating.avgRating} ({item.rating.ratingCount})</Text>
+            ) : null}
                 {storeInfo?.status && !storeInfo.status.isOpen ? (
                   <Text style={styles.closedHint}>{storeInfo.status.label}</Text>
                 ) : null}
@@ -361,6 +364,7 @@ function createStyles(colors) {
     offerImageText: { color: '#fff', fontWeight: '700', fontSize: 12 },
     offerText: { color: colors.brand, fontWeight: '700', fontSize: 12 },
     shopName: { fontSize: 18, fontWeight: '700', color: colors.text, marginTop: 8 },
+    rating: { fontSize: 12, color: colors.brand, fontWeight: '600', marginTop: 2 },
     closedHint: { fontSize: 12, color: '#f59e0b', fontWeight: '600', marginTop: 4 },
     catalogHint: { fontSize: 12, color: colors.brand, fontWeight: '600', marginTop: 4 },
     owner: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },

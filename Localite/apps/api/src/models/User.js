@@ -83,6 +83,18 @@ const User = sequelize.define('User', {
     allowNull: true,
     field: 'profile_picture_url',
   },
+  smsNotificationsEnabled: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    field: 'sms_notifications_enabled',
+  },
+  whatsappNotificationsEnabled: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    field: 'whatsapp_notifications_enabled',
+  },
 });
 
 export default User;

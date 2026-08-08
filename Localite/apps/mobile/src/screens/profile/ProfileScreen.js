@@ -34,7 +34,7 @@ function DetailRow({ label, value, styles }) {
 export default function ProfileScreen() {
   const navigation = useNavigation();
   const { user, isAdmin, isCustomer, isSuperAdmin, refreshUser } = useAuth();
-  const { isDark, setDarkMode, accentColor, accentOptions, setAccentColor, colors } = useTheme();
+  const { isDark, setDarkMode, accentColor, accentOptions, setAccentColor, colors, roleDefaultDark } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [uploading, setUploading] = useState(false);
   const [appInfo, setAppInfo] = useState(DEFAULT_APP_INFO);
@@ -111,7 +111,10 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.appearanceText}>
             <Text style={styles.appearanceLabel}>Dark mode</Text>
-            <Text style={styles.appearanceSub}>Easier on the eyes in low light</Text>
+            <Text style={styles.appearanceSub}>
+              {isDark ? 'On for your role' : 'Off for your role'}
+              {roleDefaultDark !== isDark ? ' (custom)' : ' (default)'}
+            </Text>
           </View>
           <Switch
             value={isDark}
@@ -149,7 +152,12 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Account details</Text>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>Account details</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('EditProfile')}>
+            <Text style={styles.editLink}>Edit</Text>
+          </TouchableOpacity>
+        </View>
         <DetailRow label="Name" value={user.name} styles={styles} />
         <DetailRow label="Phone" value={user.phone} styles={styles} />
         <DetailRow label="Email" value={user.email} styles={styles} />
@@ -192,6 +200,16 @@ export default function ProfileScreen() {
           Download order reports by day, week, month, or custom range as Excel or PDF
         </Text>
       </TouchableOpacity>
+
+      {isCustomer && (
+        <TouchableOpacity
+          style={styles.ordersLink}
+          onPress={() => navigation.navigate('Wishlist')}
+        >
+          <Text style={styles.ordersLinkTitle}>Saved items</Text>
+          <Text style={styles.ordersLinkSub}>Products you saved for later from catalog shops</Text>
+        </TouchableOpacity>
+      )}
 
       {isCustomer && (
         <TouchableOpacity
@@ -293,6 +311,8 @@ function createStyles(colors) {
       borderColor: colors.border,
     },
     cardTitle: { fontSize: 15, fontWeight: '700', marginBottom: 12, color: colors.brand },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+    editLink: { color: colors.brand, fontWeight: '700' },
     appearanceRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     appearanceIcon: {
       width: 40,

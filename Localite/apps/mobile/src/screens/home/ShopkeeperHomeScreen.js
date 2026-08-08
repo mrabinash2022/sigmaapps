@@ -69,7 +69,32 @@ export default function ShopkeeperHomeScreen() {
           <TouchableOpacity style={styles.quickBtn} onPress={() => navigation.navigate('ManageStoreInfo')}>
             <Text style={styles.quickBtnText}>Store info</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={styles.quickBtn} onPress={() => navigation.navigate('ManageShopProfile')}>
+            <Text style={styles.quickBtnText}>Shop profile</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.quickBtn} onPress={() => navigation.navigate('StaffManagement')}>
+            <Text style={styles.quickBtnText}>Staff</Text>
+          </TouchableOpacity>
         </View>
+
+        {data?.insights && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>30-day insights</Text>
+            <Text style={styles.meta}>Revenue: ₹{Number(data.insights.deliveredRevenue || 0).toFixed(0)}</Text>
+            <Text style={styles.meta}>Avg bill: ₹{Number(data.insights.averageBill || 0).toFixed(0)}</Text>
+            <Text style={styles.meta}>Returns: {data.insights.returnCount || 0}</Text>
+            <Text style={styles.meta}>COD pending collection: {data.insights.codPendingCollection || 0}</Text>
+          </View>
+        )}
+
+        {data?.lowStockItems?.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Low stock alert</Text>
+            {data.lowStockItems.map((item) => (
+              <Text key={item.id} style={styles.meta}>{item.name}: {item.stockQuantity} left</Text>
+            ))}
+          </View>
+        )}
 
         {storeInfo && (
           <View style={styles.card}>

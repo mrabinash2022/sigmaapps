@@ -9,6 +9,8 @@ import { migrateOrderSchema } from './services/orderSchemaMigration.js';
 import { migrateSupportSchema } from './services/supportSchemaMigration.js';
 import { migrateUserProfileSchema } from './services/userSchemaMigration.js';
 import { migrateHomeSchema } from './services/homeSchemaMigration.js';
+import { migrateFeaturesSchema } from './services/featuresSchemaMigration.js';
+import { migrateExtrasSchema } from './services/extrasSchemaMigration.js';
 
 export async function bootstrapDatabase() {
   await sequelize.authenticate();
@@ -35,6 +37,8 @@ export async function bootstrapDatabase() {
     await migrateOrderSchema();
     await migrateCatalogSchema();
     await migrateHomeSchema();
+    await migrateFeaturesSchema();
+    await migrateExtrasSchema();
     logger.info('Schema migrations applied');
   } catch (migErr) {
     logger.warn('Schema migration warning', { error: migErr.message });

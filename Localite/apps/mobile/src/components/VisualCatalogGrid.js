@@ -3,10 +3,15 @@ import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions } from 'rea
 
 const CARD_WIDTH = (Dimensions.get('window').width - 48) / 2;
 
-export function VisualCatalogItemCard({ item, quantity, onAdd, onRemove, accent }) {
+export function VisualCatalogItemCard({ item, quantity, onAdd, onRemove, accent, isWishlisted, onToggleWishlist }) {
   return (
     <View style={styles.card}>
       <Image source={{ uri: item.imageUrl }} style={styles.image} />
+      {onToggleWishlist ? (
+        <TouchableOpacity style={styles.heartBtn} onPress={() => onToggleWishlist(item.id)}>
+          <Text style={styles.heart}>{isWishlisted ? '♥' : '♡'}</Text>
+        </TouchableOpacity>
+      ) : null}
       <View style={styles.cardBody}>
         <Text style={styles.cardName} numberOfLines={2}>{item.name}</Text>
         {item.sizeLabel ? (
@@ -64,6 +69,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   image: { width: '100%', height: CARD_WIDTH * 0.75, backgroundColor: '#eee' },
+  heartBtn: { position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 14, width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
+  heart: { color: '#ef4444', fontSize: 16 },
   cardBody: { padding: 10 },
   cardName: { fontSize: 14, fontWeight: '700', color: '#222', minHeight: 36 },
   sizeBadge: {

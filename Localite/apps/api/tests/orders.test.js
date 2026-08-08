@@ -57,7 +57,10 @@ describe('Orders lifecycle', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.order.orderStatus).toBe('Accepted');
-    expect(Number(res.body.order.finalBillAmount)).toBe(450);
+    expect(Number(res.body.order.subtotalAmount)).toBe(450);
+    expect(Number(res.body.order.finalBillAmount)).toBe(
+      450 - Number(res.body.order.discountAmount || 0),
+    );
   });
 
   it('customer selects cash on delivery', async () => {
@@ -207,7 +210,10 @@ describe('Order partial fulfillment', () => {
     expect(acceptRes.status).toBe(200);
     expect(acceptRes.body.order.orderStatus).toBe('Accepted');
     expect(acceptRes.body.order.fulfillmentPayload.unavailableCount).toBeGreaterThan(0);
-    expect(Number(acceptRes.body.order.finalBillAmount)).toBe(fulfilledSubtotal);
+    expect(Number(acceptRes.body.order.subtotalAmount)).toBe(fulfilledSubtotal);
+    expect(Number(acceptRes.body.order.finalBillAmount)).toBe(
+      fulfilledSubtotal - Number(acceptRes.body.order.discountAmount || 0),
+    );
     expect(acceptRes.body.order.fulfillmentPayload.catalogSubtotal).toBe(fulfilledSubtotal);
 
     const customerGet = await api()
