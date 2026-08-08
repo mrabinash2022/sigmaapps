@@ -5,17 +5,15 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
-  TouchableOpacity,
   RefreshControl,
 } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import { formatOfferDiscount, formatWeeklyOffDays } from '@localite/shared';
 import { api } from '../../services/api';
 import { useTheme } from '../../context/ThemeContext';
 import ScreenLayout from '../../components/ScreenLayout';
 
 export default function ShopkeeperHomeScreen() {
-  const navigation = useNavigation();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [data, setData] = useState(null);
@@ -60,22 +58,7 @@ export default function ShopkeeperHomeScreen() {
         }
       >
         <Text style={styles.heading}>{shop?.name || 'Your shop'}</Text>
-        <Text style={styles.sub}>Manage offers and store hours from Profile.</Text>
-
-        <View style={styles.quickRow}>
-          <TouchableOpacity style={styles.quickBtn} onPress={() => navigation.navigate('ManageOffers')}>
-            <Text style={styles.quickBtnText}>Offers</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.quickBtn} onPress={() => navigation.navigate('ManageStoreInfo')}>
-            <Text style={styles.quickBtnText}>Store info</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.quickBtn} onPress={() => navigation.navigate('ManageShopProfile')}>
-            <Text style={styles.quickBtnText}>Shop profile</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.quickBtn} onPress={() => navigation.navigate('StaffManagement')}>
-            <Text style={styles.quickBtnText}>Staff</Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.sub}>Insights and alerts for your shop at a glance.</Text>
 
         {data?.insights && (
           <View style={styles.card}>
@@ -144,15 +127,6 @@ function createStyles(colors) {
     center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
     heading: { fontSize: 22, fontWeight: '800', color: colors.text },
     sub: { fontSize: 14, color: colors.textSecondary, marginTop: 6, lineHeight: 20 },
-    quickRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
-    quickBtn: {
-      flex: 1,
-      backgroundColor: colors.brand,
-      borderRadius: 10,
-      paddingVertical: 12,
-      alignItems: 'center',
-    },
-    quickBtnText: { color: '#fff', fontWeight: '700' },
     section: { marginTop: 22 },
     sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.brand, marginBottom: 10 },
     card: {

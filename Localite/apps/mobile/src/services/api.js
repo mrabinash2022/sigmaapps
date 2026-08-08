@@ -698,6 +698,8 @@ export const api = {
     request(`/api/bulk-buy/campaigns/${campaignId}/subscribe`, { method: 'POST' }),
   unsubscribeBulkBuyCampaign: (campaignId) =>
     request(`/api/bulk-buy/campaigns/${campaignId}/subscribe`, { method: 'DELETE' }),
+  updateBulkBuyCampaign: (campaignId, body) =>
+    request(`/api/bulk-buy/campaigns/${campaignId}`, { method: 'PATCH', body: JSON.stringify(body) }),
   getBulkBuyInbox: () => request('/api/bulk-buy/campaigns/inbox'),
   getMyBulkBuyCampaigns: () => request('/api/bulk-buy/campaigns/mine'),
   getBulkBuyOffers: (campaignId) =>

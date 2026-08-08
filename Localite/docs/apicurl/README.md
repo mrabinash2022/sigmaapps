@@ -93,8 +93,10 @@ Authorization: Bearer <accessToken>
 
 ### Bulk buy: group electronics deal
 
-1. Super admin: `PATCH /api/admin/shops/:shopId` with `{ "bulkBuyEnabled": true }` for electronics partners
-2. Customer: `POST /api/bulk-buy/campaigns` (or store creates with `shopId`)
-3. Customers: `POST /api/bulk-buy/campaigns/:id/subscribe` until threshold (default 10)
-4. Store inbox: `GET /api/bulk-buy/campaigns/inbox` → `POST .../offers` with discount and warranty
-5. Subscribers: `GET /api/bulk-buy/campaigns/:id` to view store offers
+1. Super admin: `PATCH /api/admin/shops/:shopId` with `{ "bulkBuyEnabled": true }` for partner stores
+2. Shop admin: `GET /api/auth/me` → confirm `user.shops[].bulkBuyEnabled` is `true`
+3. Customer: `POST /api/bulk-buy/campaigns` (or bulk-enabled store creates with `shopId`)
+4. Customers: `POST /api/bulk-buy/campaigns/:id/subscribe` until threshold (default 10)
+5. Store inbox: `GET /api/bulk-buy/campaigns/inbox` → `POST .../offers` with discount and warranty
+6. Subscribers: `GET /api/bulk-buy/campaigns/:id` to view store offers
+7. To revoke store access: `PATCH /api/admin/shops/:shopId` with `{ "bulkBuyEnabled": false }`

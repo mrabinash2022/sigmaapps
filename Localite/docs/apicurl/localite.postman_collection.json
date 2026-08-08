@@ -358,7 +358,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/auth/me",
-            "description": ""
+            "description": "Returns current user. Shop admins include user.shops[].bulkBuyEnabled (bulk buy partner flag)."
           }
         },
         {
@@ -2310,6 +2310,54 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Quick Mart Updated\",\n  \"phone\": \"9876543210\",\n  \"rank\": 5,\n  \"bulkBuyEnabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Enable Bulk Buy Partner",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/shops/{{shopId}}",
+            "description": "Allow shop to create store campaigns, view inbox, and submit offers.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bulkBuyEnabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Disable Bulk Buy Partner",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/shops/{{shopId}}",
+            "description": "Revoke bulk buy access for shopkeepers. Customers are unaffected.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bulkBuyEnabled\": false\n}",
               "options": {
                 "raw": {
                   "language": "json"

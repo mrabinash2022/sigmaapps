@@ -54,7 +54,9 @@ const collection = {
         req('Verify OTP', 'POST', '/api/auth/verify-otp', { auth: false, body: { phone: '{{customerPhone}}', otp: '{{devOtp}}' }, test: loginTest }),
         req('Refresh Token', 'POST', '/api/auth/refresh', { auth: false, body: { refreshToken: '{{refreshToken}}' } }),
         req('Logout', 'POST', '/api/auth/logout', { body: { refreshToken: '{{refreshToken}}' } }),
-        req('Get Me', 'GET', '/api/auth/me'),
+        req('Get Me', 'GET', '/api/auth/me', {
+          desc: 'Returns current user. Shop admins include user.shops[].bulkBuyEnabled (bulk buy partner flag).',
+        }),
         req('Update Profile', 'PATCH', '/api/auth/profile', { body: { name: 'Updated Name', address: '123 Main St', smsNotificationsEnabled: true, whatsappNotificationsEnabled: false } }),
         req('Upload Profile Picture', 'POST', '/api/auth/profile/picture', {
           formdata: [{ key: 'picture', type: 'file', src: [] }],
@@ -295,6 +297,14 @@ const collection = {
         req('Invite Shop', 'POST', '/api/admin/shops/invite', { body: { shopCode: 'LCT-TEST01', ownerPhone: '9999999999', areaId: '{{areaId}}' } }),
         req('Create Shop (direct)', 'POST', '/api/admin/shops', { body: { shopCode: 'LCT-DIR01', name: 'Quick Mart', category: 'Grocery', address: 'Road', phone: '9876543210', areaId: '{{areaId}}' } }),
         req('Update Shop', 'PATCH', '/api/admin/shops/{{shopId}}', { body: { name: 'Quick Mart Updated', phone: '9876543210', rank: 5, bulkBuyEnabled: true } }),
+        req('Enable Bulk Buy Partner', 'PATCH', '/api/admin/shops/{{shopId}}', {
+          body: { bulkBuyEnabled: true },
+          desc: 'Allow shop to create store campaigns, view inbox, and submit offers.',
+        }),
+        req('Disable Bulk Buy Partner', 'PATCH', '/api/admin/shops/{{shopId}}', {
+          body: { bulkBuyEnabled: false },
+          desc: 'Revoke bulk buy access for shopkeepers. Customers are unaffected.',
+        }),
         req('Enable Shop', 'PATCH', '/api/admin/shops/{{shopId}}/operational-status', { body: { operationalStatus: 'enabled' } }),
         req('Disable Shop', 'PATCH', '/api/admin/shops/{{shopId}}/operational-status', { body: { operationalStatus: 'disabled' } }),
         req('On Hold Shop', 'PATCH', '/api/admin/shops/{{shopId}}/operational-status', { body: { operationalStatus: 'on_hold' } }),

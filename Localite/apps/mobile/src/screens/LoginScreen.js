@@ -13,7 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { UserRole } from '@localite/shared';
 import { api } from '../services/api';
-import { DEV_DEMO_ACCOUNTS, DEV_OTP, DEV_SEEDED_SHOP_OWNERS } from '../config/devDemoAccounts';
+import { DEV_DEMO_CUSTOMERS, DEV_DEMO_STORES, DEV_DEMO_SUPER_ADMIN, DEV_OTP, DEV_SEEDED_SHOP_OWNERS, shouldShowDevDemoAccounts } from '../config/devDemoAccounts';
 
 export default function LoginScreen() {
   const { colors } = useTheme();
@@ -46,7 +46,9 @@ export default function LoginScreen() {
   const [emailVerified, setEmailVerified] = useState(false);
   const [registrationToken, setRegistrationToken] = useState(null);
   const [maskedEmail, setMaskedEmail] = useState('');
-  const [devAccountsOpen, setDevAccountsOpen] = useState(false);
+  const [devAccountsOpen, setDevAccountsOpen] = useState(true);
+  const [customersOpen, setCustomersOpen] = useState(true);
+  const [storesOpen, setStoresOpen] = useState(true);
   const [shopOwnersOpen, setShopOwnersOpen] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
   const [forgotPhone, setForgotPhone] = useState('');
@@ -490,7 +492,7 @@ export default function LoginScreen() {
         </>
       )}
 
-      {__DEV__ && (
+      {shouldShowDevDemoAccounts() && (
         <View style={styles.devBox}>
           <TouchableOpacity
             style={styles.devToggle}
@@ -510,28 +512,77 @@ export default function LoginScreen() {
                 Email OTP is logged in the API console when you register.
               </Text>
 
-              {DEV_DEMO_ACCOUNTS.map((account) => (
+              <TouchableOpacity
+                style={styles.devSubToggle}
+                onPress={() => setCustomersOpen((open) => !open)}
+              >
+                <Text style={styles.devSubToggleText}>
+                  {customersOpen ? '▼' : '▶'} Customers ({DEV_DEMO_CUSTOMERS.length})
+                </Text>
+              </TouchableOpacity>
+
+              {customersOpen && DEV_DEMO_CUSTOMERS.map((account) => (
                 <TouchableOpacity
                   key={account.phone}
                   style={styles.devCard}
                   onPress={() => applyDemoAccount(account)}
                 >
-                  <Text style={styles.devRole}>{account.role}</Text>
+                  <Text style={styles.devRole}>{account.label}</Text>
                   <Text style={styles.devLine}>Phone: {account.phone}</Text>
                   <Text style={styles.devLine}>Username: {account.username}</Text>
-                  <Text style={styles.devLine}>Email: {account.email}</Text>
                   <Text style={styles.devLine}>Password: {account.password}</Text>
-                  {account.note ? <Text style={styles.devHint}>{account.note}</Text> : null}
                   <Text style={styles.devTap}>Tap to fill login form</Text>
                 </TouchableOpacity>
               ))}
 
               <TouchableOpacity
                 style={styles.devSubToggle}
+                onPress={() => setStoresOpen((open) => !open)}
+              >
+                <Text style={styles.devSubToggleText}>
+                  {storesOpen ? '▼' : '▶'} Stores ({DEV_DEMO_STORES.length})
+                </Text>
+              </TouchableOpacity>
+
+              {storesOpen && (
+                <View style={styles.devShopList}>
+                  <Text style={styles.devLine}>
+                    Password for all: {DEV_DEMO_STORES[0]?.password}
+                  </Text>
+                  {DEV_DEMO_STORES.map((store) => (
+                    <TouchableOpacity
+                      key={store.phone}
+                      style={styles.devShopRow}
+                      onPress={() => applyDemoAccount({
+                        phone: store.phone,
+                        password: store.password,
+                      })}
+                    >
+                      <Text style={styles.devShopPhone}>{store.label}</Text>
+                      <Text style={styles.devShopName}>{store.shop}</Text>
+                      <Text style={styles.devHint}>{store.phone}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={styles.devCard}
+                onPress={() => applyDemoAccount(DEV_DEMO_SUPER_ADMIN)}
+              >
+                <Text style={styles.devRole}>{DEV_DEMO_SUPER_ADMIN.label}</Text>
+                <Text style={styles.devLine}>Phone: {DEV_DEMO_SUPER_ADMIN.phone}</Text>
+                <Text style={styles.devLine}>Username: {DEV_DEMO_SUPER_ADMIN.username}</Text>
+                <Text style={styles.devLine}>Password: {DEV_DEMO_SUPER_ADMIN.password}</Text>
+                <Text style={styles.devTap}>Tap to fill login form</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.devSubToggle}
                 onPress={() => setShopOwnersOpen((open) => !open)}
               >
                 <Text style={styles.devSubToggleText}>
-                  {shopOwnersOpen ? '▼' : '▶'} Seeded store owners ({DEV_SEEDED_SHOP_OWNERS.phones.length})
+                  {shopOwnersOpen ? '▼' : '▶'} More seeded stores ({DEV_SEEDED_SHOP_OWNERS.phones.length})
                 </Text>
               </TouchableOpacity>
 
@@ -566,7 +617,7 @@ export default function LoginScreen() {
 function createStyles(colors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    content: { padding: 24, paddingTop: 60 },
+    content: { padding: 24, paddingTop: 60, paddingBottom: 48 },
     brand: { fontSize: 36, fontWeight: '800', color: colors.brand, textAlign: 'center' },
     tagline: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginBottom: 24, marginTop: 8 },
     tabRow: { flexDirection: 'row', marginBottom: 20, gap: 8 },

@@ -2,7 +2,7 @@
 
 Group buying for big-ticket electronics (fridges, TVs, washing machines, etc.). Separate from regular grocery orders — use `/api/bulk-buy/*`.
 
-**Prerequisites:** Customer or store admin must be onboarded. Stores need `bulkBuyEnabled: true` (super admin sets via `PATCH /api/admin/shops/:shopId`).
+**Prerequisites:** Customer or store admin must be onboarded. Stores need `bulkBuyEnabled: true` (super admin sets via `PATCH /api/admin/shops/:shopId`). Customers always have bulk buy access; only shopkeepers are gated by this flag.
 
 Product categories: `refrigerator`, `washing_machine`, `television`, `mobile`, `air_conditioner`, `other`
 
@@ -18,6 +18,26 @@ curl -s -X PATCH "$BASE_URL/api/admin/shops/$SHOP_ID" \
   -H "Content-Type: application/json" \
   -d '{"bulkBuyEnabled": true}' | jq .
 ```
+
+## Disable bulk buy for a shop
+
+```bash
+curl -s -X PATCH "$BASE_URL/api/admin/shops/$SHOP_ID" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"bulkBuyEnabled": false}' | jq .
+```
+
+## Verify flag on shopkeeper profile
+
+After toggling, the shop admin can confirm via `/me`:
+
+```bash
+curl -s "$BASE_URL/api/auth/me" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq '.user.shops[] | {id, name, bulkBuyEnabled}'
+```
+
+When `bulkBuyEnabled` is `false`, store APIs return **403** for store campaign creation and offer submission; the store inbox returns an empty list.
 
 ---
 

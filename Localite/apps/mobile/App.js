@@ -1,8 +1,9 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useFocusEffect } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { ActivityIndicator, Pressable, Text, StyleSheet } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -45,25 +46,26 @@ import ProfileOrdersScreen from './src/screens/profile/ProfileOrdersScreen';
 import ReportsScreen from './src/screens/profile/ReportsScreen';
 import {
   buildTabOptions,
-  getAppTabScreenOptions,
+  useAppTabScreenOptions,
 } from './src/navigation/tabBarConfig';
-import BulkBuyHeaderButton from './src/components/BulkBuyHeaderButton';
+import { shopHasBulkBuyEnabled } from './src/utils/profile';
 import BulkBuyHomeScreen from './src/bulk-buy/screens/BulkBuyHomeScreen';
 import CreateCampaignScreen from './src/bulk-buy/screens/CreateCampaignScreen';
 import CampaignDetailScreen from './src/bulk-buy/screens/CampaignDetailScreen';
 import SubmitOfferScreen from './src/bulk-buy/screens/SubmitOfferScreen';
 
-const bulkBuyScreens = (
+const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
+
+const bulkBuyStackScreens = (
   <>
-    <Stack.Screen name="BulkBuyHome" component={BulkBuyHomeScreen} options={{ title: 'Bulk Buy' }} />
     <Stack.Screen name="BulkBuyCreateCampaign" component={CreateCampaignScreen} options={{ title: 'Start campaign' }} />
+    <Stack.Screen name="BulkBuyEditCampaign" component={CreateCampaignScreen} options={{ title: 'Edit campaign' }} />
     <Stack.Screen name="BulkBuyCampaignDetail" component={CampaignDetailScreen} options={{ title: 'Campaign' }} />
     <Stack.Screen name="BulkBuySubmitOffer" component={SubmitOfferScreen} options={{ title: 'Submit offer' }} />
   </>
 );
 
-const Stack = createNativeStackNavigator();
-const Tab = createBottomTabNavigator();
 const navigationRef = React.createRef();
 
 function navigateFromNotification(data) {
@@ -151,14 +153,14 @@ function AppShell() {
 function CustomerTabs() {
   const { colors } = useTheme();
   const headerOptions = useHeaderOptions();
+  const baseTabOptions = useAppTabScreenOptions(colors);
   const tabScreenOptions = React.useMemo(
     () => ({
-      ...getAppTabScreenOptions(colors),
+      ...baseTabOptions,
       ...headerOptions,
-      headerLeft: () => <BulkBuyHeaderButton />,
       headerRight: () => <LogoutButton />,
     }),
-    [colors, headerOptions],
+    [baseTabOptions, headerOptions],
   );
 
   return (
@@ -199,6 +201,18 @@ function CustomerTabs() {
           colors,
         })}
       />
+      <Tab.Screen
+        name="BulkBuy"
+        component={BulkBuyHomeScreen}
+        options={buildTabOptions({
+          label: 'Bulk Buy',
+          title: 'Bulk Buy',
+          iconActive: 'people',
+          iconInactive: 'people-outline',
+          testID: 'tab-bulk-buy',
+          colors,
+        })}
+      />
     </Tab.Navigator>
   );
 }
@@ -221,22 +235,30 @@ function CustomerStack() {
       <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Reports' }} />
       <Stack.Screen name="ManageOffers" component={ManageOffersScreen} options={{ title: 'Offers & discounts' }} />
       <Stack.Screen name="ManageStoreInfo" component={ManageStoreInfoScreen} options={{ title: 'Store info' }} />
-      {bulkBuyScreens}
+      {bulkBuyStackScreens}
     </Stack.Navigator>
   );
 }
 
 function AdminTabs() {
   const { colors } = useTheme();
+  const { user, refreshUser } = useAuth();
+  const shopBulkBuyEnabled = shopHasBulkBuyEnabled(user);
   const headerOptions = useHeaderOptions();
+  const baseTabOptions = useAppTabScreenOptions(colors);
   const tabScreenOptions = React.useMemo(
     () => ({
-      ...getAppTabScreenOptions(colors),
+      ...baseTabOptions,
       ...headerOptions,
-      headerLeft: () => <BulkBuyHeaderButton />,
       headerRight: () => <LogoutButton />,
     }),
-    [colors, headerOptions],
+    [baseTabOptions, headerOptions],
+  );
+
+  useFocusEffect(
+    React.useCallback(() => {
+      refreshUser().catch(() => {});
+    }, [refreshUser]),
   );
 
   return (
@@ -287,11 +309,27 @@ function AdminTabs() {
           colors,
         })}
       />
+      {shopBulkBuyEnabled && (
+        <Tab.Screen
+          name="BulkBuy"
+          component={BulkBuyHomeScreen}
+          options={buildTabOptions({
+            label: 'Bulk Buy',
+            title: 'Bulk Buy',
+            iconActive: 'people',
+            iconInactive: 'people-outline',
+            testID: 'tab-bulk-buy',
+            colors,
+          })}
+        />
+      )}
     </Tab.Navigator>
   );
 }
 
 function AdminStack() {
+  const { user } = useAuth();
+  const shopBulkBuyEnabled = shopHasBulkBuyEnabled(user);
   const headerOptions = useHeaderOptions();
   return (
     <Stack.Navigator screenOptions={{ ...headerOptions, headerRight: () => <LogoutButton /> }}>
@@ -308,7 +346,7 @@ function AdminStack() {
       <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Reports' }} />
       <Stack.Screen name="ManageOffers" component={ManageOffersScreen} options={{ title: 'Offers & discounts' }} />
       <Stack.Screen name="ManageStoreInfo" component={ManageStoreInfoScreen} options={{ title: 'Store info' }} />
-      {bulkBuyScreens}
+      {shopBulkBuyEnabled && bulkBuyStackScreens}
     </Stack.Navigator>
   );
 }
@@ -316,13 +354,14 @@ function AdminStack() {
 function SuperAdminTabs() {
   const { colors } = useTheme();
   const headerOptions = useHeaderOptions();
+  const baseTabOptions = useAppTabScreenOptions(colors);
   const tabScreenOptions = React.useMemo(
     () => ({
-      ...getAppTabScreenOptions(colors),
+      ...baseTabOptions,
       ...headerOptions,
       headerRight: () => <LogoutButton />,
     }),
-    [colors, headerOptions],
+    [baseTabOptions, headerOptions],
   );
 
   return (
@@ -350,6 +389,18 @@ function SuperAdminTabs() {
           colors,
         })}
       />
+      <Tab.Screen
+        name="BulkBuy"
+        component={BulkBuyHomeScreen}
+        options={buildTabOptions({
+          label: 'Bulk Buy',
+          title: 'Bulk Buy',
+          iconActive: 'people',
+          iconInactive: 'people-outline',
+          testID: 'tab-bulk-buy',
+          colors,
+        })}
+      />
     </Tab.Navigator>
   );
 }
@@ -374,7 +425,7 @@ function SuperAdminStack() {
         component={ManageAnnouncementsScreen}
         options={{ title: 'Announcements' }}
       />
-      {bulkBuyScreens}
+      {bulkBuyStackScreens}
     </Stack.Navigator>
   );
 }
@@ -418,11 +469,13 @@ function AppNavigator() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <ThemeProvider>
-        <AppShell />
-      </ThemeProvider>
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <ThemeProvider>
+          <AppShell />
+        </ThemeProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
 

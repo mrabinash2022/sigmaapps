@@ -18,3 +18,7 @@ export function getPrimaryShop(user) {
   if (!user?.shops?.length) return null;
   return user.shops.find((s) => s.status === 'approved') || user.shops[0];
 }
+
+export function shopHasBulkBuyEnabled(user) {
+  return Boolean(getPrimaryShop(user)?.bulkBuyEnabled);
+}

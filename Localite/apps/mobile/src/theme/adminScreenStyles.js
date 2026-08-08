@@ -63,6 +63,14 @@ export function createAdminStyles(colors) {
     meta: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
     items: { fontSize: 13, color: colors.text, marginTop: 8 },
     row: { flexDirection: 'row', gap: 8, marginTop: 12 },
+    switchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginTop: 16,
+      marginBottom: 8,
+      paddingVertical: 8,
+    },
     approveBtn: {
       flex: 1,
       backgroundColor: colors.brandDark,

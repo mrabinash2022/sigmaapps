@@ -39,6 +39,46 @@ const DEMO_ACCOUNTS = [
     areaName: 'Pimple Saudagar',
     address: 'Roseland Residency, Pimple Saudagar',
   },
+  {
+    phone: '8888888802',
+    password: 'Customer@123',
+    email: 'customer2@localite.dev',
+    name: 'Demo Customer Two',
+    username: 'customer2',
+    role: UserRole.CUSTOMER,
+    areaName: 'Pimple Saudagar',
+    address: 'Roseland Residency, Pimple Saudagar',
+  },
+  {
+    phone: '8888888803',
+    password: 'Customer@123',
+    email: 'customer3@localite.dev',
+    name: 'Demo Customer Three',
+    username: 'customer3',
+    role: UserRole.CUSTOMER,
+    areaName: 'Pimple Saudagar',
+    address: 'Roseland Residency, Pimple Saudagar',
+  },
+  {
+    phone: '8888888804',
+    password: 'Customer@123',
+    email: 'customer4@localite.dev',
+    name: 'Demo Customer Four',
+    username: 'customer4',
+    role: UserRole.CUSTOMER,
+    areaName: 'Pimple Saudagar',
+    address: 'Roseland Residency, Pimple Saudagar',
+  },
+  {
+    phone: '8888888805',
+    password: 'Customer@123',
+    email: 'customer5@localite.dev',
+    name: 'Demo Customer Five',
+    username: 'customer5',
+    role: UserRole.CUSTOMER,
+    areaName: 'Pimple Saudagar',
+    address: 'Roseland Residency, Pimple Saudagar',
+  },
 ];
 
 async function upsertDemoUser(account) {
@@ -129,10 +169,13 @@ console.log('Home schema migration applied');
 
 const users = {};
 for (const account of DEMO_ACCOUNTS) {
-  users[account.role] = await upsertDemoUser(account);
+  const key = account.username || account.phone;
+  users[key] = await upsertDemoUser(account);
 }
 
-const area = await syncDemoShopkeeper(users[UserRole.ADMIN], users[UserRole.SUPER_ADMIN]);
+const shopAdmin = users.shopadmin;
+const superAdmin = users.superadmin;
+const area = await syncDemoShopkeeper(shopAdmin, superAdmin);
 if (area) {
   await seedHomeDemoData({ area });
 }

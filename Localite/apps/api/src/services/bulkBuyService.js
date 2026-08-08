@@ -15,7 +15,6 @@ import {
   BulkBuyStoreOffer,
   Shop,
   ShopUser,
-  User,
 } from '../models/index.js';
 import {
   notifyBulkBuyOfferPublished,
@@ -51,15 +50,15 @@ function serializeOffer(offer) {
   };
 }
 
-export async function serializeCampaign(campaign, { viewerUserId = null } = {}) {
+export async function serializeCampaign(campaign, { viewer = null } = {}) {
   const json = campaign.toJSON ? campaign.toJSON() : campaign;
   const subscriberCount = await countSubscribers(json.id);
   let isSubscribed = false;
-  if (viewerUserId) {
+  if (viewer?.id) {
     const row = await BulkBuyParticipant.findOne({
       where: {
         campaignId: json.id,
-        customerId: viewerUserId,
+        customerId: viewer.id,
         status: BulkBuyParticipantStatus.SUBSCRIBED,
       },
     });
@@ -67,6 +66,7 @@ export async function serializeCampaign(campaign, { viewerUserId = null } = {}) 
   }
 
   const offerCount = json.offers?.length ?? await BulkBuyStoreOffer.count({ where: { campaignId: json.id } });
+  const canEdit = viewer ? await canUserEditCampaign(viewer, campaign) : false;
 
   return {
     id: json.id,
@@ -90,6 +90,7 @@ export async function serializeCampaign(campaign, { viewerUserId = null } = {}) 
     deadlineAt: json.deadlineAt,
     thresholdReachedAt: json.thresholdReachedAt,
     isSubscribed,
+    canEdit,
     offerCount,
     offers: json.offers ? json.offers.map(serializeOffer) : undefined,
     createdAt: json.createdAt,
@@ -102,6 +103,27 @@ async function getCampaignIncludes() {
     { association: 'createdByCustomer', attributes: ['id', 'name'] },
     { association: 'createdByShop', attributes: ['id', 'name'] },
   ];
+}
+
+async function canUserEditCampaign(user, campaign) {
+  const json = campaign.toJSON ? campaign.toJSON() : campaign;
+  if (json.status !== BulkBuyCampaignStatus.COLLECTING) return false;
+
+  if (user.role === UserRole.CUSTOMER) {
+    return json.createdByCustomerId === user.id;
+  }
+  if (user.role === UserRole.ADMIN) {
+    if (!json.createdByShopId) return false;
+    const link = await ShopUser.findOne({ where: { userId: user.id, shopId: json.createdByShopId } });
+    return Boolean(link);
+  }
+  if (user.role === UserRole.SUPER_ADMIN) {
+    if (json.createdByCustomerId === user.id) return true;
+    if (!json.createdByShopId) return false;
+    const link = await ShopUser.findOne({ where: { userId: user.id, shopId: json.createdByShopId } });
+    return Boolean(link);
+  }
+  return false;
 }
 
 async function assertShopBulkPartner(user, shopId) {
@@ -203,19 +225,96 @@ export async function createCampaign(user, payload) {
   });
 
   const full = await BulkBuyCampaign.findByPk(campaign.id, { include: await getCampaignIncludes() });
-  return serializeCampaign(full, { viewerUserId: user.id });
+  return serializeCampaign(full, { viewer: user });
 }
 
-export async function listCampaignsForArea(areaId, viewerUserId) {
+export async function updateCampaign(user, campaignId, payload) {
+  const campaign = await BulkBuyCampaign.findByPk(campaignId);
+  if (!campaign) {
+    const err = new Error('Campaign not found');
+    err.statusCode = 404;
+    throw err;
+  }
+  if (!(await canUserEditCampaign(user, campaign))) {
+    const err = new Error('You can only edit your own campaigns while they are still collecting interest');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  const {
+    title,
+    productCategory,
+    description,
+    brandPreference,
+    minSubscribers,
+    deadlineAt,
+  } = payload;
+
+  const updates = {};
+
+  if (title !== undefined) {
+    if (!title?.trim()) {
+      const err = new Error('Title is required');
+      err.statusCode = 400;
+      throw err;
+    }
+    updates.title = title.trim();
+  }
+  if (productCategory !== undefined) {
+    if (!Object.values(BulkBuyProductCategory).includes(productCategory)) {
+      const err = new Error('Invalid product category');
+      err.statusCode = 400;
+      throw err;
+    }
+    updates.productCategory = productCategory;
+  }
+  if (description !== undefined) {
+    updates.description = description?.trim() || null;
+  }
+  if (brandPreference !== undefined) {
+    updates.brandPreference = brandPreference?.trim() || null;
+  }
+  if (deadlineAt !== undefined) {
+    updates.deadlineAt = deadlineAt || null;
+  }
+  if (minSubscribers !== undefined) {
+    const min = Number(minSubscribers);
+    if (!Number.isFinite(min) || min < 2) {
+      const err = new Error('Minimum subscribers must be at least 2');
+      err.statusCode = 400;
+      throw err;
+    }
+    const subscriberCount = await countSubscribers(campaignId);
+    if (min < subscriberCount) {
+      const err = new Error(`Minimum cannot be less than current subscribers (${subscriberCount})`);
+      err.statusCode = 400;
+      throw err;
+    }
+    updates.minSubscribers = min;
+  }
+
+  if (!Object.keys(updates).length) {
+    const err = new Error('No valid fields to update');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  await campaign.update(updates);
+  await maybeReachThreshold(campaign);
+
+  return getCampaignById(campaignId, user);
+}
+
+export async function listCampaignsForArea(areaId, viewer) {
   const campaigns = await BulkBuyCampaign.findAll({
     where: { areaId, status: { [Op.in]: ACTIVE_STATUSES } },
     include: await getCampaignIncludes(),
     order: [['createdAt', 'DESC']],
   });
-  return Promise.all(campaigns.map((c) => serializeCampaign(c, { viewerUserId })));
+  return Promise.all(campaigns.map((c) => serializeCampaign(c, { viewer })));
 }
 
-export async function getCampaignById(campaignId, viewerUserId) {
+export async function getCampaignById(campaignId, viewer) {
   const campaign = await BulkBuyCampaign.findByPk(campaignId, {
     include: [
       ...(await getCampaignIncludes()),
@@ -231,7 +330,7 @@ export async function getCampaignById(campaignId, viewerUserId) {
     err.statusCode = 404;
     throw err;
   }
-  return serializeCampaign(campaign, { viewerUserId });
+  return serializeCampaign(campaign, { viewer });
 }
 
 async function maybeReachThreshold(campaign) {
@@ -278,7 +377,7 @@ export async function subscribeToCampaign(campaignId, customerId) {
   }
 
   await maybeReachThreshold(campaign);
-  return getCampaignById(campaignId, customerId);
+  return getCampaignById(campaignId, { id: customerId, role: UserRole.CUSTOMER });
 }
 
 export async function unsubscribeFromCampaign(campaignId, customerId) {
@@ -302,7 +401,7 @@ export async function unsubscribeFromCampaign(campaignId, customerId) {
   }
 
   await participant.update({ status: BulkBuyParticipantStatus.WITHDRAWN });
-  return getCampaignById(campaignId, customerId);
+  return getCampaignById(campaignId, { id: customerId, role: UserRole.CUSTOMER });
 }
 
 export async function listStoreInbox(user) {
@@ -326,7 +425,7 @@ export async function listStoreInbox(user) {
     order: [['thresholdReachedAt', 'DESC']],
   });
 
-  return Promise.all(campaigns.map((c) => serializeCampaign(c, { viewerUserId: user.id })));
+  return Promise.all(campaigns.map((c) => serializeCampaign(c, { viewer: user })));
 }
 
 export async function listMyCampaigns(user) {
@@ -345,7 +444,7 @@ export async function listMyCampaigns(user) {
     include: await getCampaignIncludes(),
     order: [['createdAt', 'DESC']],
   });
-  return Promise.all(campaigns.map((c) => serializeCampaign(c, { viewerUserId: user.id })));
+  return Promise.all(campaigns.map((c) => serializeCampaign(c, { viewer: user })));
 }
 
 export async function submitStoreOffer(user, campaignId, shopId, payload) {

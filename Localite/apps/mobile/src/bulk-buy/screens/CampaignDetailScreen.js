@@ -14,6 +14,7 @@ import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { UserRole } from '@localite/shared';
+import { shopHasBulkBuyEnabled } from '../../utils/profile';
 
 export default function CampaignDetailScreen() {
   const route = useRoute();
@@ -23,7 +24,9 @@ export default function CampaignDetailScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const isCustomer = user?.role === UserRole.CUSTOMER;
-  const isShop = user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN;
+  const isShopAdmin = user?.role === UserRole.ADMIN;
+  const isSuperAdmin = user?.role === UserRole.SUPER_ADMIN;
+  const canUseShopBulkBuy = isSuperAdmin || (isShopAdmin && shopHasBulkBuyEnabled(user));
 
   const [campaign, setCampaign] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -71,7 +74,7 @@ export default function CampaignDetailScreen() {
   }
 
   const canSubscribe = isCustomer && campaign.status === 'collecting';
-  const canOffer = isShop && ['ready_for_offers', 'offers_available'].includes(campaign.status);
+  const canOffer = canUseShopBulkBuy && ['ready_for_offers', 'offers_available'].includes(campaign.status);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -86,6 +89,15 @@ export default function CampaignDetailScreen() {
         <Text style={styles.stat}>{formatBulkBuyProgress(campaign.subscriberCount, campaign.minSubscribers)}</Text>
         <Text style={styles.statSub}>people interested in this campaign</Text>
       </View>
+
+      {campaign.canEdit && (
+        <TouchableOpacity
+          style={styles.editBtn}
+          onPress={() => navigation.navigate('BulkBuyEditCampaign', { campaignId })}
+        >
+          <Text style={styles.editBtnText}>Edit campaign details</Text>
+        </TouchableOpacity>
+      )}
 
       {canSubscribe && (
         <TouchableOpacity
@@ -161,6 +173,16 @@ function createStyles(colors) {
     },
     stat: { fontSize: 28, fontWeight: '800', color: colors.text },
     statSub: { fontSize: 14, color: colors.textMuted, marginTop: 4, textAlign: 'center' },
+    editBtn: {
+      marginTop: 16,
+      paddingVertical: 12,
+      borderRadius: 10,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.brand,
+      backgroundColor: colors.card,
+    },
+    editBtnText: { color: colors.brand, fontWeight: '700', fontSize: 15 },
     primaryBtn: {
       marginTop: 20,
       backgroundColor: colors.brand,

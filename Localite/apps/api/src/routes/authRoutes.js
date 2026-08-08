@@ -278,7 +278,7 @@ router.get('/me', authenticate, async (req, res, next) => {
     if (req.user.role === UserRole.ADMIN || req.user.role === UserRole.SUPER_ADMIN) {
       includes.push({
         association: 'shops',
-        attributes: ['id', 'name', 'phone', 'shopCode', 'status', 'operationalStatus'],
+        attributes: ['id', 'name', 'phone', 'shopCode', 'status', 'operationalStatus', 'bulkBuyEnabled'],
         through: { attributes: [] },
       });
     }
@@ -324,7 +324,7 @@ router.patch('/profile', authenticate, async (req, res, next) => {
     if (req.user.role === UserRole.ADMIN || req.user.role === UserRole.SUPER_ADMIN) {
       includes.push({
         association: 'shops',
-        attributes: ['id', 'name', 'phone', 'shopCode', 'status', 'operationalStatus', 'address'],
+        attributes: ['id', 'name', 'phone', 'shopCode', 'status', 'operationalStatus', 'address', 'bulkBuyEnabled'],
         through: { attributes: [] },
       });
     }
@@ -348,7 +348,7 @@ router.post('/profile/picture', authenticate, profileUpload.single('picture'), a
     if (req.user.role === UserRole.ADMIN || req.user.role === UserRole.SUPER_ADMIN) {
       includes.push({
         association: 'shops',
-        attributes: ['id', 'name', 'phone', 'shopCode', 'status', 'operationalStatus', 'address'],
+        attributes: ['id', 'name', 'phone', 'shopCode', 'status', 'operationalStatus', 'address', 'bulkBuyEnabled'],
         through: { attributes: [] },
       });
     }

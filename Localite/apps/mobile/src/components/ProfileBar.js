@@ -13,17 +13,30 @@ export default function ProfileBar() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const goHome = () => {
-    try {
-      const parent = navigation.getParent();
-      if (parent?.navigate) {
-        parent.navigate('HomeTab');
+  const navigateOnRoot = (screen, params) => {
+    let nav = navigation;
+    while (nav) {
+      const routeNames = nav.getState?.()?.routeNames;
+      if (routeNames?.includes(screen)) {
+        nav.navigate(screen, params);
         return;
       }
-      navigation.navigate('HomeTab');
-    } catch {
-      navigation.navigate('Home', { screen: 'HomeTab' });
+      nav = nav.getParent?.();
     }
+    navigation.navigate(screen, params);
+  };
+
+  const goHome = () => {
+    let nav = navigation;
+    while (nav) {
+      const routeNames = nav.getState?.()?.routeNames;
+      if (routeNames?.includes('HomeTab')) {
+        nav.navigate('HomeTab');
+        return;
+      }
+      nav = nav.getParent?.();
+    }
+    navigation.navigate('Home', { screen: 'HomeTab' });
   };
 
   const { title, phone, subtitle } = useMemo(() => {
@@ -76,7 +89,7 @@ export default function ProfileBar() {
       </View>
       <TouchableOpacity
         style={styles.profileBtn}
-        onPress={() => navigation.navigate('Profile')}
+        onPress={() => navigateOnRoot('Profile')}
         hitSlop={8}
       >
         <Text style={styles.profileBtnText}>Profile</Text>

@@ -35,6 +35,41 @@ const DEMO_ACCOUNTS = {
   },
 };
 
+const EXTRA_DEMO_CUSTOMERS = [
+  {
+    phone: '8888888802',
+    password: 'Customer@123',
+    email: 'customer2@localite.dev',
+    name: 'Demo Customer Two',
+    username: 'customer2',
+    role: UserRole.CUSTOMER,
+  },
+  {
+    phone: '8888888803',
+    password: 'Customer@123',
+    email: 'customer3@localite.dev',
+    name: 'Demo Customer Three',
+    username: 'customer3',
+    role: UserRole.CUSTOMER,
+  },
+  {
+    phone: '8888888804',
+    password: 'Customer@123',
+    email: 'customer4@localite.dev',
+    name: 'Demo Customer Four',
+    username: 'customer4',
+    role: UserRole.CUSTOMER,
+  },
+  {
+    phone: '8888888805',
+    password: 'Customer@123',
+    email: 'customer5@localite.dev',
+    name: 'Demo Customer Five',
+    username: 'customer5',
+    role: UserRole.CUSTOMER,
+  },
+];
+
 async function upsertDemoUser({ phone, password, email, name, username, role }, extra = {}) {
   const [user] = await User.findOrCreate({
     where: { phone },
@@ -73,7 +108,7 @@ async function upsertDemoUser({ phone, password, email, name, username, role }, 
 loadEnv();
 
 const SHOPS = [
-  { name: 'Shree Krishna Sweets', category: ShopCategory.SWEETS, ownerName: 'Rajesh Patil', phone: '9876500001', address: 'Main Road, Pimple Saudagar', rank: 1, itemTypes: 'Sweets, Namkeen, Ladoo, Kaju Katli' },
+  { name: 'Shree Krishna Sweets', category: ShopCategory.SWEETS, ownerName: 'Rajesh Patil', phone: '9876500001', address: 'Main Road, Pimple Saudagar', rank: 1, itemTypes: 'Sweets, Namkeen, Ladoo, Kaju Katli', bulkBuyEnabled: true },
   { name: 'Ganesh Namkeen House', category: ShopCategory.SWEETS, ownerName: 'Suresh Kulkarni', phone: '9876500002', address: 'Kunal Icon, Pimple Saudagar', rank: 2, itemTypes: 'Namkeen, Farsan, Chivda' },
   { name: 'LifeCare Pharmacy', category: ShopCategory.MEDICINES, ownerName: 'Dr. Amit Deshmukh', phone: '9876500003', address: 'Rohan Abhilasha, Pimple Saudagar', rank: 1, itemTypes: 'Medicines, OTC, Health supplements' },
   { name: 'Wellness Medical Store', category: ShopCategory.MEDICINES, ownerName: 'Prakash Jadhav', phone: '9876500004', address: 'Vision One Mall Road', rank: 2, itemTypes: 'Prescription medicines, Ayurvedic' },
@@ -125,6 +160,7 @@ async function seed() {
         operationalStatus: ShopOperationalStatus.ENABLED,
         status: ShopStatus.APPROVED,
         isVerified: true,
+        bulkBuyEnabled: Boolean(shopData.bulkBuyEnabled),
       });
       await ensureShopOwnerUser(User, Shop, ShopUser, shop, { setApplicant: false });
       console.log(`  Shop: ${shop.name}`);
@@ -158,11 +194,19 @@ async function seed() {
     console.log(`Demo Admin: ${shopAdmin.phone} / ${DEMO_ACCOUNTS.shopAdmin.password} / ${DEMO_ACCOUNTS.shopAdmin.email}`);
 
     // Demo customer
-    const customer = await upsertDemoUser(DEMO_ACCOUNTS.customer, {
+  const customer = await upsertDemoUser(DEMO_ACCOUNTS.customer, {
       address: 'Roseland Residency, Pimple Saudagar',
       areaId: area.id,
     });
     console.log(`Demo Customer: ${customer.phone} / ${DEMO_ACCOUNTS.customer.password} / ${DEMO_ACCOUNTS.customer.email}`);
+
+    for (const demoCustomer of EXTRA_DEMO_CUSTOMERS) {
+      const row = await upsertDemoUser(demoCustomer, {
+        address: 'Roseland Residency, Pimple Saudagar',
+        areaId: area.id,
+      });
+      console.log(`Demo Customer: ${row.phone} / ${demoCustomer.password} / ${demoCustomer.email}`);
+    }
 
     await migrateHomeSchema();
     await seedHomeDemoData({ area });

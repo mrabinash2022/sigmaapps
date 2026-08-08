@@ -15,6 +15,8 @@ import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { UserRole } from '@localite/shared';
+import ScreenLayout from '../../components/ScreenLayout';
+import { shopHasBulkBuyEnabled } from '../../utils/profile';
 
 function statusLabel(status) {
   const map = {
@@ -33,7 +35,11 @@ export default function BulkBuyHomeScreen() {
   const { user } = useAuth();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const isShop = user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN;
+  const isCustomer = user?.role === UserRole.CUSTOMER;
+  const isShopAdmin = user?.role === UserRole.ADMIN;
+  const isSuperAdmin = user?.role === UserRole.SUPER_ADMIN;
+  const canUseShopBulkBuy = isSuperAdmin || (isShopAdmin && shopHasBulkBuyEnabled(user));
+  const showCreateCampaign = isCustomer || canUseShopBulkBuy;
 
   const [campaigns, setCampaigns] = useState([]);
   const [inbox, setInbox] = useState([]);
@@ -45,7 +51,7 @@ export default function BulkBuyHomeScreen() {
       const areaId = user?.areaId;
       const [listRes, inboxRes] = await Promise.all([
         areaId ? api.getBulkBuyCampaigns(areaId) : Promise.resolve({ campaigns: [] }),
-        isShop ? api.getBulkBuyInbox() : Promise.resolve({ campaigns: [] }),
+        canUseShopBulkBuy ? api.getBulkBuyInbox() : Promise.resolve({ campaigns: [] }),
       ]);
       setCampaigns(listRes.campaigns || []);
       setInbox(inboxRes.campaigns || []);
@@ -55,7 +61,7 @@ export default function BulkBuyHomeScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user?.areaId, isShop]);
+  }, [user?.areaId, canUseShopBulkBuy]);
 
   useFocusEffect(useCallback(() => {
     setLoading(true);
@@ -88,29 +94,34 @@ export default function BulkBuyHomeScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.brand} />
-      </View>
+      <ScreenLayout>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.brand} />
+        </View>
+      </ScreenLayout>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <ScreenLayout>
+      <View style={styles.container}>
       <View style={styles.hero}>
         <Text style={styles.heroTitle}>Group up. Get a better deal.</Text>
         <Text style={styles.heroSub}>
           Join bulk buy campaigns for TVs, fridges, washing machines and more from local electronics stores.
         </Text>
-        <TouchableOpacity
-          style={styles.createBtn}
-          onPress={() => navigation.navigate('BulkBuyCreateCampaign')}
-        >
-          <Ionicons name="add-circle-outline" size={20} color="#fff" />
-          <Text style={styles.createBtnText}>Start a campaign</Text>
-        </TouchableOpacity>
+        {showCreateCampaign && (
+          <TouchableOpacity
+            style={styles.createBtn}
+            onPress={() => navigation.navigate('BulkBuyCreateCampaign')}
+          >
+            <Ionicons name="add-circle-outline" size={20} color="#fff" />
+            <Text style={styles.createBtnText}>Start a campaign</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      {isShop && inbox.length > 0 && (
+      {canUseShopBulkBuy && inbox.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Store inbox — ready for offers</Text>
           <FlatList
@@ -139,7 +150,8 @@ export default function BulkBuyHomeScreen() {
           />
         )}
       </View>
-    </View>
+      </View>
+    </ScreenLayout>
   );
 }
 

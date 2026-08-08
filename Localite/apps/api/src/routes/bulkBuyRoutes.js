@@ -11,6 +11,7 @@ import {
   subscribeToCampaign,
   submitStoreOffer,
   unsubscribeFromCampaign,
+  updateCampaign,
 } from '../services/bulkBuyService.js';
 
 const router = Router();
@@ -21,7 +22,7 @@ router.get('/campaigns', async (req, res, next) => {
   try {
     const areaId = req.query.areaId || req.user.areaId;
     if (!areaId) return res.status(400).json({ error: 'areaId is required' });
-    const campaigns = await listCampaignsForArea(areaId, req.user.id);
+    const campaigns = await listCampaignsForArea(areaId, req.user);
     res.json({ campaigns });
   } catch (err) {
     next(err);
@@ -57,7 +58,16 @@ router.get('/campaigns/mine', async (req, res, next) => {
 
 router.get('/campaigns/:campaignId', async (req, res, next) => {
   try {
-    const campaign = await getCampaignById(req.params.campaignId, req.user.id);
+    const campaign = await getCampaignById(req.params.campaignId, req.user);
+    res.json({ campaign });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/campaigns/:campaignId', async (req, res, next) => {
+  try {
+    const campaign = await updateCampaign(req.user, req.params.campaignId, req.body);
     res.json({ campaign });
   } catch (err) {
     next(err);

@@ -251,6 +251,24 @@ export default function ProfileScreen() {
               Set open hours, weekly off, and temporary closure notices
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.ordersLink}
+            onPress={() => navigation.navigate('ManageShopProfile')}
+          >
+            <Text style={styles.ordersLinkTitle}>Shop profile</Text>
+            <Text style={styles.ordersLinkSub}>
+              Update shop description, logo, delivery radius, and catalog settings
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.ordersLink}
+            onPress={() => navigation.navigate('StaffManagement')}
+          >
+            <Text style={styles.ordersLinkTitle}>Staff</Text>
+            <Text style={styles.ordersLinkSub}>
+              Invite and manage staff who can help run your shop
+            </Text>
+          </TouchableOpacity>
         </>
       )}
 

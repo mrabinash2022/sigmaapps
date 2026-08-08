@@ -39,6 +39,20 @@ describe('Auth', () => {
     expect(res.body.user.isOnboarded).toBe(true);
   });
 
+  it('returns bulkBuyEnabled on shop admin /api/auth/me', async () => {
+    const { token } = await login(DEMO.shopAdmin);
+
+    const res = await api()
+      .get('/api/auth/me')
+      .set(authHeader(token));
+
+    expect(res.status).toBe(200);
+    expect(res.body.user.role).toBe('admin');
+    expect(res.body.user.shops?.length).toBeGreaterThan(0);
+    expect(res.body.user.shops[0]).toHaveProperty('bulkBuyEnabled');
+    expect(typeof res.body.user.shops[0].bulkBuyEnabled).toBe('boolean');
+  });
+
   it('verifies OTP in dev mode', async () => {
     await api()
       .post('/api/auth/send-otp')

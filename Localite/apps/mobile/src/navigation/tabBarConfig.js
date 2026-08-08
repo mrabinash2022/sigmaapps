@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Platform, Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 export function TabLabel({ label, focused, colors }) {
@@ -47,7 +48,12 @@ export function buildTabOptions({ label, title, iconActive, iconInactive, testID
   };
 }
 
-export function getAppTabScreenOptions(colors) {
+export function getAppTabScreenOptions(colors, { bottomInset = 0 } = {}) {
+  const bottomPad = Platform.OS === 'android'
+    ? Math.max(bottomInset, 10) + 8
+    : Math.max(bottomInset, 20);
+  const tabBarHeight = (Platform.OS === 'ios' ? 49 : 56) + bottomPad;
+
   return {
     tabBarActiveTintColor: colors.brand,
     tabBarInactiveTintColor: colors.tabInactive,
@@ -57,9 +63,9 @@ export function getAppTabScreenOptions(colors) {
       backgroundColor: colors.tabBar,
       borderTopWidth: 1,
       borderTopColor: colors.tabBarBorder,
-      height: Platform.OS === 'ios' ? 88 : 72,
-      paddingTop: 10,
-      paddingBottom: Platform.OS === 'ios' ? 26 : 12,
+      height: tabBarHeight,
+      paddingTop: 8,
+      paddingBottom: bottomPad,
       elevation: 16,
       shadowColor: '#000000',
       shadowOpacity: colors.mode === 'dark' ? 0.35 : 0.1,
@@ -69,6 +75,14 @@ export function getAppTabScreenOptions(colors) {
     tabBarItemStyle: styles.tabBarItem,
     tabBarButton: (props) => <AppTabBarButton {...props} />,
   };
+}
+
+export function useAppTabScreenOptions(colors) {
+  const insets = useSafeAreaInsets();
+  return React.useMemo(
+    () => getAppTabScreenOptions(colors, { bottomInset: insets.bottom }),
+    [colors, insets.bottom],
+  );
 }
 
 const styles = StyleSheet.create({

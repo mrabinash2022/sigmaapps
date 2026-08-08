@@ -114,7 +114,32 @@ curl -s -X PATCH "$BASE_URL/api/admin/shops/$SHOP_ID" \
   }' | jq .
 ```
 
-`bulkBuyEnabled` — allow shop to participate in bulk buy campaigns and create store-originated campaigns.
+`bulkBuyEnabled` — allow shop to participate in bulk buy campaigns and create store-originated campaigns. Shopkeepers only see bulk buy features in the app when this is `true`. Customers always have access to bulk buy regardless of this flag.
+
+### Enable bulk buy partner
+
+```bash
+curl -s -X PATCH "$BASE_URL/api/admin/shops/$SHOP_ID" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"bulkBuyEnabled": true}' | jq .
+```
+
+### Disable bulk buy partner
+
+```bash
+curl -s -X PATCH "$BASE_URL/api/admin/shops/$SHOP_ID" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"bulkBuyEnabled": false}' | jq .
+```
+
+Verify the flag on the shopkeeper account:
+
+```bash
+curl -s "$BASE_URL/api/auth/me" \
+  -H "Authorization: Bearer $SHOP_ADMIN_TOKEN" | jq '.user.shops[] | {shopCode, bulkBuyEnabled}'
+```
 
 ---
 

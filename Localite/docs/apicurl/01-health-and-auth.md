@@ -145,6 +145,16 @@ curl -s "$BASE_URL/api/auth/me" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 
+For **shop admins**, each linked shop in `user.shops` includes `bulkBuyEnabled` (set by super admin). The mobile app uses this to show or hide the Bulk Buy tab for shopkeepers. Customers do not receive `shops` on `/me`.
+
+Example (shop admin — after super admin enables bulk buy):
+
+```bash
+# Login as shop admin first, then:
+curl -s "$BASE_URL/api/auth/me" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq '.user.shops[] | {id, name, shopCode, bulkBuyEnabled}'
+```
+
 ---
 
 ## Update profile

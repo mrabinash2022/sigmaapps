@@ -12,6 +12,7 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  Switch,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { ShopCategory, ShopOperationalStatus } from '@localite/shared';
@@ -62,6 +63,7 @@ const emptyEditForm = {
   rank: '10',
   areaId: null,
   ownerName: '',
+  bulkBuyEnabled: false,
 };
 
 export default function SuperAdminScreen() {
@@ -240,6 +242,7 @@ export default function SuperAdminScreen() {
       rank: String(shop.rank ?? 10),
       areaId: shop.areaId || shop.area?.id || areas[0]?.id || null,
       ownerName: shop.ownerName || '',
+      bulkBuyEnabled: Boolean(shop.bulkBuyEnabled),
     });
   };
 
@@ -264,6 +267,7 @@ export default function SuperAdminScreen() {
         rank: parseInt(editForm.rank, 10) || 10,
         areaId: editForm.areaId,
         ownerName: editForm.ownerName.trim() || undefined,
+        bulkBuyEnabled: editForm.bulkBuyEnabled,
       });
       setEditingShop(null);
       reloadAllTabs();
@@ -364,6 +368,11 @@ export default function SuperAdminScreen() {
         <Text style={styles.meta}>{item.category} · {item.area?.name || 'No area'}</Text>
         <Text style={styles.meta}>Keeper: {owner?.name || item.ownerName} ({item.phone})</Text>
         <Text style={styles.meta}>{item.address}</Text>
+        {item.bulkBuyEnabled ? (
+          <Text style={[styles.badge, { backgroundColor: '#6366f1', alignSelf: 'flex-start', marginTop: 8 }]}>
+            Bulk Buy partner
+          </Text>
+        ) : null}
 
         <TouchableOpacity style={styles.editBtn} onPress={() => openEdit(item)}>
           <Text style={styles.editBtnText}>Edit shop</Text>
@@ -554,6 +563,20 @@ export default function SuperAdminScreen() {
             value={editForm.description}
             onChangeText={(v) => setEditForm({ ...editForm, description: v })}
           />
+          <View style={styles.switchRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Bulk Buy partner</Text>
+              <Text style={styles.sub}>
+                Allow this shop to participate in bulk buy campaigns and submit store offers.
+              </Text>
+            </View>
+            <Switch
+              value={editForm.bulkBuyEnabled}
+              onValueChange={(v) => setEditForm({ ...editForm, bulkBuyEnabled: v })}
+              trackColor={{ false: colors.border, true: colors.brandMuted || '#1a7f4b' }}
+              thumbColor={editForm.bulkBuyEnabled ? colors.brand || '#1a7f4b' : '#f4f4f5'}
+            />
+          </View>
           <View style={styles.row}>
             <TouchableOpacity style={styles.rejectBtn} onPress={() => setEditingShop(null)}>
               <Text style={styles.rejectText}>Cancel</Text>
