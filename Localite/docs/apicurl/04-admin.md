@@ -109,9 +109,12 @@ curl -s -X PATCH "$BASE_URL/api/admin/shops/$SHOP_ID" \
     "description": "Updated description",
     "ownerName": "Owner Name",
     "rank": 5,
-    "areaId": "'"$AREA_ID"'"
+    "areaId": "'"$AREA_ID"'",
+    "bulkBuyEnabled": true
   }' | jq .
 ```
+
+`bulkBuyEnabled` — allow shop to participate in bulk buy campaigns and create store-originated campaigns.
 
 ---
 

@@ -61,6 +61,7 @@ Authorization: Bearer <accessToken>
 | [06-catalog-app-logs.md](06-catalog-app-logs.md) | Catalog CRUD, CSV import, app info, referrals, client logs |
 | [07-home-reports-offers.md](07-home-reports-offers.md) | Home screens, favorites, reports, store info, offers, announcements |
 | [08-addresses-wishlist-ratings.md](08-addresses-wishlist-ratings.md) | Saved addresses, wishlist, ratings, analytics |
+| [09-bulk-buy.md](09-bulk-buy.md) | Bulk buy campaigns, subscriptions, store offers |
 | [localite.postman_collection.json](localite.postman_collection.json) | Postman collection (import all endpoints) |
 | [localite.postman_environment.json](localite.postman_environment.json) | Postman environment variables |
 
@@ -89,3 +90,11 @@ Authorization: Bearer <accessToken>
 2. `GET /api/areas` → `GET /api/shops/area/:areaId` → copy `shopId`
 3. `POST /api/orders/submit-flexible-order` with `shopId` + `textPayload`
 4. Wait for shop to accept → select payment → pay (mock) → deliver
+
+### Bulk buy: group electronics deal
+
+1. Super admin: `PATCH /api/admin/shops/:shopId` with `{ "bulkBuyEnabled": true }` for electronics partners
+2. Customer: `POST /api/bulk-buy/campaigns` (or store creates with `shopId`)
+3. Customers: `POST /api/bulk-buy/campaigns/:id/subscribe` until threshold (default 10)
+4. Store inbox: `GET /api/bulk-buy/campaigns/inbox` → `POST .../offers` with discount and warranty
+5. Subscribers: `GET /api/bulk-buy/campaigns/:id` to view store offers

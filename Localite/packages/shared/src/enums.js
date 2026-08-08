@@ -116,3 +116,33 @@ export const AnnouncementAudience = {
   CUSTOMERS: 'customers',
   ALL: 'all',
 };
+
+export const BulkBuyProductCategory = {
+  REFRIGERATOR: 'refrigerator',
+  WASHING_MACHINE: 'washing_machine',
+  TELEVISION: 'television',
+  MOBILE: 'mobile',
+  AIR_CONDITIONER: 'air_conditioner',
+  OTHER: 'other',
+};
+
+export const BulkBuyCampaignCreatorType = {
+  CUSTOMER: 'customer',
+  STORE: 'store',
+};
+
+export const BulkBuyCampaignStatus = {
+  COLLECTING: 'collecting',
+  READY_FOR_OFFERS: 'ready_for_offers',
+  OFFERS_AVAILABLE: 'offers_available',
+  CLOSED: 'closed',
+  EXPIRED: 'expired',
+  CANCELLED: 'cancelled',
+};
+
+export const BulkBuyParticipantStatus = {
+  SUBSCRIBED: 'subscribed',
+  WITHDRAWN: 'withdrawn',
+};
+
+export const DEFAULT_BULK_BUY_MIN_SUBSCRIBERS = 10;

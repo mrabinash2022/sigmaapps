@@ -686,6 +686,27 @@ export const api = {
   getMyInvitations: () => request('/api/shops/my/invitations'),
   completeShopRegistration: (shopId, body) =>
     request(`/api/shops/${shopId}/complete-registration`, { method: 'POST', body: JSON.stringify(body) }),
+
+  // Bulk buy
+  getBulkBuyCampaigns: (areaId) =>
+    request(`/api/bulk-buy/campaigns${buildQuery({ areaId })}`),
+  createBulkBuyCampaign: (body) =>
+    request('/api/bulk-buy/campaigns', { method: 'POST', body: JSON.stringify(body) }),
+  getBulkBuyCampaign: (campaignId) =>
+    request(`/api/bulk-buy/campaigns/${campaignId}`),
+  subscribeBulkBuyCampaign: (campaignId) =>
+    request(`/api/bulk-buy/campaigns/${campaignId}/subscribe`, { method: 'POST' }),
+  unsubscribeBulkBuyCampaign: (campaignId) =>
+    request(`/api/bulk-buy/campaigns/${campaignId}/subscribe`, { method: 'DELETE' }),
+  getBulkBuyInbox: () => request('/api/bulk-buy/campaigns/inbox'),
+  getMyBulkBuyCampaigns: () => request('/api/bulk-buy/campaigns/mine'),
+  getBulkBuyOffers: (campaignId) =>
+    request(`/api/bulk-buy/campaigns/${campaignId}/offers`),
+  submitBulkBuyOffer: (campaignId, body) =>
+    request(`/api/bulk-buy/campaigns/${campaignId}/offers`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 };
 
 export { API_URL };

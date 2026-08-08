@@ -17,6 +17,9 @@ import CustomerFavoriteShop from './CustomerFavoriteShop.js';
 import UserAddress from './UserAddress.js';
 import OrderRating from './OrderRating.js';
 import CustomerWishlistItem from './CustomerWishlistItem.js';
+import BulkBuyCampaign from './BulkBuyCampaign.js';
+import BulkBuyParticipant from './BulkBuyParticipant.js';
+import BulkBuyStoreOffer from './BulkBuyStoreOffer.js';
 
 // Area ↔ Shop
 Area.hasMany(Shop, { foreignKey: 'areaId', as: 'shops' });
@@ -123,6 +126,25 @@ CustomerWishlistItem.belongsTo(Shop, { foreignKey: 'shopId', as: 'shop' });
 ShopCatalogItem.hasMany(CustomerWishlistItem, { foreignKey: 'catalogItemId', as: 'wishlistEntries' });
 CustomerWishlistItem.belongsTo(ShopCatalogItem, { foreignKey: 'catalogItemId', as: 'catalogItem' });
 
+Area.hasMany(BulkBuyCampaign, { foreignKey: 'areaId', as: 'bulkBuyCampaigns' });
+BulkBuyCampaign.belongsTo(Area, { foreignKey: 'areaId', as: 'area' });
+User.hasMany(BulkBuyCampaign, { foreignKey: 'createdByCustomerId', as: 'createdBulkBuyCampaigns' });
+BulkBuyCampaign.belongsTo(User, { foreignKey: 'createdByCustomerId', as: 'createdByCustomer' });
+Shop.hasMany(BulkBuyCampaign, { foreignKey: 'createdByShopId', as: 'createdBulkBuyCampaigns' });
+BulkBuyCampaign.belongsTo(Shop, { foreignKey: 'createdByShopId', as: 'createdByShop' });
+
+BulkBuyCampaign.hasMany(BulkBuyParticipant, { foreignKey: 'campaignId', as: 'participants' });
+BulkBuyParticipant.belongsTo(BulkBuyCampaign, { foreignKey: 'campaignId', as: 'campaign' });
+User.hasMany(BulkBuyParticipant, { foreignKey: 'customerId', as: 'bulkBuyParticipations' });
+BulkBuyParticipant.belongsTo(User, { foreignKey: 'customerId', as: 'customer' });
+
+BulkBuyCampaign.hasMany(BulkBuyStoreOffer, { foreignKey: 'campaignId', as: 'offers' });
+BulkBuyStoreOffer.belongsTo(BulkBuyCampaign, { foreignKey: 'campaignId', as: 'campaign' });
+Shop.hasMany(BulkBuyStoreOffer, { foreignKey: 'shopId', as: 'bulkBuyOffers' });
+BulkBuyStoreOffer.belongsTo(Shop, { foreignKey: 'shopId', as: 'shop' });
+User.hasMany(BulkBuyStoreOffer, { foreignKey: 'submittedByUserId', as: 'submittedBulkBuyOffers' });
+BulkBuyStoreOffer.belongsTo(User, { foreignKey: 'submittedByUserId', as: 'submittedBy' });
+
 export {
   Area,
   Shop,
@@ -143,4 +165,7 @@ export {
   UserAddress,
   OrderRating,
   CustomerWishlistItem,
+  BulkBuyCampaign,
+  BulkBuyParticipant,
+  BulkBuyStoreOffer,
 };

@@ -1916,6 +1916,188 @@
       ]
     },
     {
+      "name": "Bulk Buy",
+      "item": [
+        {
+          "name": "List Campaigns",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/bulk-buy/campaigns?areaId={{areaId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "Create Campaign (Customer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/bulk-buy/campaigns",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Bulk buy refrigerator\",\n  \"productCategory\": \"refrigerator\",\n  \"brandPreference\": \"LG\",\n  \"minSubscribers\": 10,\n  \"areaId\": \"{{areaId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Create Campaign (Store)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/bulk-buy/campaigns",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Store bulk TV fest\",\n  \"productCategory\": \"television\",\n  \"minSubscribers\": 10,\n  \"shopId\": \"{{shopId}}\",\n  \"areaId\": \"{{areaId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Campaign",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/bulk-buy/campaigns/{{campaignId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "Subscribe",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/bulk-buy/campaigns/{{campaignId}}/subscribe",
+            "description": ""
+          }
+        },
+        {
+          "name": "Unsubscribe",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/bulk-buy/campaigns/{{campaignId}}/subscribe",
+            "description": ""
+          }
+        },
+        {
+          "name": "My Campaigns",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/bulk-buy/campaigns/mine",
+            "description": ""
+          }
+        },
+        {
+          "name": "Store Inbox",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/bulk-buy/campaigns/inbox",
+            "description": ""
+          }
+        },
+        {
+          "name": "List Offers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/bulk-buy/campaigns/{{campaignId}}/offers",
+            "description": ""
+          }
+        },
+        {
+          "name": "Submit Store Offer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/bulk-buy/campaigns/{{campaignId}}/offers",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shopId\": \"{{shopId}}\",\n  \"discountType\": \"percent\",\n  \"discountValue\": 12,\n  \"termsText\": \"Valid when all buyers purchase within 30 days\",\n  \"extras\": {\n    \"extendedWarrantyMonths\": 12,\n    \"installation\": true,\n    \"freebies\": \"Gift voucher\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "App",
       "item": [
         {
@@ -2127,7 +2309,7 @@
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Quick Mart Updated\",\n  \"phone\": \"9876543210\",\n  \"rank\": 5\n}",
+              "raw": "{\n  \"name\": \"Quick Mart Updated\",\n  \"phone\": \"9876543210\",\n  \"rank\": 5,\n  \"bulkBuyEnabled\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"

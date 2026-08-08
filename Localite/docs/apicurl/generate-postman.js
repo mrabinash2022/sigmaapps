@@ -236,6 +236,45 @@ const collection = {
       ],
     },
     {
+      name: 'Bulk Buy',
+      item: [
+        req('List Campaigns', 'GET', '/api/bulk-buy/campaigns?areaId={{areaId}}'),
+        req('Create Campaign (Customer)', 'POST', '/api/bulk-buy/campaigns', {
+          body: {
+            title: 'Bulk buy refrigerator',
+            productCategory: 'refrigerator',
+            brandPreference: 'LG',
+            minSubscribers: 10,
+            areaId: '{{areaId}}',
+          },
+        }),
+        req('Create Campaign (Store)', 'POST', '/api/bulk-buy/campaigns', {
+          body: {
+            title: 'Store bulk TV fest',
+            productCategory: 'television',
+            minSubscribers: 10,
+            shopId: '{{shopId}}',
+            areaId: '{{areaId}}',
+          },
+        }),
+        req('Get Campaign', 'GET', '/api/bulk-buy/campaigns/{{campaignId}}'),
+        req('Subscribe', 'POST', '/api/bulk-buy/campaigns/{{campaignId}}/subscribe'),
+        req('Unsubscribe', 'DELETE', '/api/bulk-buy/campaigns/{{campaignId}}/subscribe'),
+        req('My Campaigns', 'GET', '/api/bulk-buy/campaigns/mine'),
+        req('Store Inbox', 'GET', '/api/bulk-buy/campaigns/inbox'),
+        req('List Offers', 'GET', '/api/bulk-buy/campaigns/{{campaignId}}/offers'),
+        req('Submit Store Offer', 'POST', '/api/bulk-buy/campaigns/{{campaignId}}/offers', {
+          body: {
+            shopId: '{{shopId}}',
+            discountType: 'percent',
+            discountValue: 12,
+            termsText: 'Valid when all buyers purchase within 30 days',
+            extras: { extendedWarrantyMonths: 12, installation: true, freebies: 'Gift voucher' },
+          },
+        }),
+      ],
+    },
+    {
       name: 'App',
       item: [
         req('App Info', 'GET', '/api/app/info'),
@@ -255,7 +294,7 @@ const collection = {
         req('All Shops', 'GET', '/api/admin/shops'),
         req('Invite Shop', 'POST', '/api/admin/shops/invite', { body: { shopCode: 'LCT-TEST01', ownerPhone: '9999999999', areaId: '{{areaId}}' } }),
         req('Create Shop (direct)', 'POST', '/api/admin/shops', { body: { shopCode: 'LCT-DIR01', name: 'Quick Mart', category: 'Grocery', address: 'Road', phone: '9876543210', areaId: '{{areaId}}' } }),
-        req('Update Shop', 'PATCH', '/api/admin/shops/{{shopId}}', { body: { name: 'Quick Mart Updated', phone: '9876543210', rank: 5 } }),
+        req('Update Shop', 'PATCH', '/api/admin/shops/{{shopId}}', { body: { name: 'Quick Mart Updated', phone: '9876543210', rank: 5, bulkBuyEnabled: true } }),
         req('Enable Shop', 'PATCH', '/api/admin/shops/{{shopId}}/operational-status', { body: { operationalStatus: 'enabled' } }),
         req('Disable Shop', 'PATCH', '/api/admin/shops/{{shopId}}/operational-status', { body: { operationalStatus: 'disabled' } }),
         req('On Hold Shop', 'PATCH', '/api/admin/shops/{{shopId}}/operational-status', { body: { operationalStatus: 'on_hold' } }),

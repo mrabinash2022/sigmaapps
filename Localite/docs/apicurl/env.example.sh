@@ -13,6 +13,7 @@ export TICKET_ID=""
 export ADDRESS_ID=""
 export OFFER_ID=""
 export ANNOUNCEMENT_ID=""
+export CAMPAIGN_ID=""
 
 # Demo credentials
 export SUPER_ADMIN_ID="9000000001"

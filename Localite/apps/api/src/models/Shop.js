@@ -121,6 +121,12 @@ const Shop = sequelize.define('Shop', {
     defaultValue: 5,
     field: 'low_stock_threshold',
   },
+  bulkBuyEnabled: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    field: 'bulk_buy_enabled',
+  },
 });
 
 export default Shop;

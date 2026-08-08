@@ -11,6 +11,7 @@ import { migrateUserProfileSchema } from './services/userSchemaMigration.js';
 import { migrateHomeSchema } from './services/homeSchemaMigration.js';
 import { migrateFeaturesSchema } from './services/featuresSchemaMigration.js';
 import { migrateExtrasSchema } from './services/extrasSchemaMigration.js';
+import { migrateBulkBuySchema } from './services/bulkBuySchemaMigration.js';
 
 export async function bootstrapDatabase() {
   await sequelize.authenticate();
@@ -39,6 +40,7 @@ export async function bootstrapDatabase() {
     await migrateHomeSchema();
     await migrateFeaturesSchema();
     await migrateExtrasSchema();
+    await migrateBulkBuySchema();
     logger.info('Schema migrations applied');
   } catch (migErr) {
     logger.warn('Schema migration warning', { error: migErr.message });

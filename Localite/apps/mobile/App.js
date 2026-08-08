@@ -47,6 +47,20 @@ import {
   buildTabOptions,
   getAppTabScreenOptions,
 } from './src/navigation/tabBarConfig';
+import BulkBuyHeaderButton from './src/components/BulkBuyHeaderButton';
+import BulkBuyHomeScreen from './src/bulk-buy/screens/BulkBuyHomeScreen';
+import CreateCampaignScreen from './src/bulk-buy/screens/CreateCampaignScreen';
+import CampaignDetailScreen from './src/bulk-buy/screens/CampaignDetailScreen';
+import SubmitOfferScreen from './src/bulk-buy/screens/SubmitOfferScreen';
+
+const bulkBuyScreens = (
+  <>
+    <Stack.Screen name="BulkBuyHome" component={BulkBuyHomeScreen} options={{ title: 'Bulk Buy' }} />
+    <Stack.Screen name="BulkBuyCreateCampaign" component={CreateCampaignScreen} options={{ title: 'Start campaign' }} />
+    <Stack.Screen name="BulkBuyCampaignDetail" component={CampaignDetailScreen} options={{ title: 'Campaign' }} />
+    <Stack.Screen name="BulkBuySubmitOffer" component={SubmitOfferScreen} options={{ title: 'Submit offer' }} />
+  </>
+);
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -141,6 +155,7 @@ function CustomerTabs() {
     () => ({
       ...getAppTabScreenOptions(colors),
       ...headerOptions,
+      headerLeft: () => <BulkBuyHeaderButton />,
       headerRight: () => <LogoutButton />,
     }),
     [colors, headerOptions],
@@ -206,6 +221,7 @@ function CustomerStack() {
       <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Reports' }} />
       <Stack.Screen name="ManageOffers" component={ManageOffersScreen} options={{ title: 'Offers & discounts' }} />
       <Stack.Screen name="ManageStoreInfo" component={ManageStoreInfoScreen} options={{ title: 'Store info' }} />
+      {bulkBuyScreens}
     </Stack.Navigator>
   );
 }
@@ -217,6 +233,7 @@ function AdminTabs() {
     () => ({
       ...getAppTabScreenOptions(colors),
       ...headerOptions,
+      headerLeft: () => <BulkBuyHeaderButton />,
       headerRight: () => <LogoutButton />,
     }),
     [colors, headerOptions],
@@ -291,6 +308,7 @@ function AdminStack() {
       <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Reports' }} />
       <Stack.Screen name="ManageOffers" component={ManageOffersScreen} options={{ title: 'Offers & discounts' }} />
       <Stack.Screen name="ManageStoreInfo" component={ManageStoreInfoScreen} options={{ title: 'Store info' }} />
+      {bulkBuyScreens}
     </Stack.Navigator>
   );
 }
@@ -356,6 +374,7 @@ function SuperAdminStack() {
         component={ManageAnnouncementsScreen}
         options={{ title: 'Announcements' }}
       />
+      {bulkBuyScreens}
     </Stack.Navigator>
   );
 }

@@ -42,6 +42,8 @@ Localite is **not** a warehouse marketplace (Blinkit/Instamart model). It is a *
 | Payment | Prepaid dominant | UPI (Razorpay) or Cash on Delivery |
 | Relationship | Anonymous | Known customer ↔ known shop |
 
+> **Bulk Buy (v0.11):** Group electronics campaigns — separate module from grocery orders. See [`docs/bulk-buy-architecture.md`](./bulk-buy-architecture.md).
+
 ```mermaid
 flowchart LR
     subgraph Users

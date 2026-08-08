@@ -184,7 +184,7 @@ router.patch('/shops/:shopId', async (req, res, next) => {
     const shop = await Shop.findByPk(req.params.shopId);
     if (!shop) return res.status(404).json({ error: 'Shop not found' });
 
-    const { name, category, address, phone, itemTypes, description, areaId, rank, ownerName } = req.body;
+    const { name, category, address, phone, itemTypes, description, areaId, rank, ownerName, bulkBuyEnabled } = req.body;
     const updates = {};
 
     if (name !== undefined) updates.name = name;
@@ -195,6 +195,7 @@ router.patch('/shops/:shopId', async (req, res, next) => {
     if (description !== undefined) updates.description = description;
     if (rank !== undefined) updates.rank = rank;
     if (ownerName !== undefined) updates.ownerName = ownerName;
+    if (bulkBuyEnabled !== undefined) updates.bulkBuyEnabled = Boolean(bulkBuyEnabled);
 
     if (areaId !== undefined) {
       const area = await Area.findByPk(areaId);

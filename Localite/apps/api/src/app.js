@@ -20,6 +20,7 @@ import analyticsRoutes from './routes/analyticsRoutes.js';
 import addressRoutes from './routes/addressRoutes.js';
 import ratingRoutes from './routes/ratingRoutes.js';
 import wishlistRoutes from './routes/wishlistRoutes.js';
+import bulkBuyRoutes from './routes/bulkBuyRoutes.js';
 import webhookRoutes from './routes/webhookRoutes.js';
 import { getStorageInfo } from './services/storageService.js';
 import { isRazorpayEnabled } from './services/razorpayService.js';
@@ -61,6 +62,7 @@ export function createApp() {
   app.use('/api/addresses', addressRoutes);
   app.use('/api/ratings', ratingRoutes);
   app.use('/api/wishlist', wishlistRoutes);
+  app.use('/api/bulk-buy', bulkBuyRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
