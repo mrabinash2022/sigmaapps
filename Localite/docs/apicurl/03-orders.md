@@ -10,7 +10,9 @@ Customer token required.
 curl -s -X POST "$BASE_URL/api/orders/submit-flexible-order" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -F "shopId=$SHOP_ID" \
-  -F "textPayload=2kg rice, 1L oil, 500g sugar" | jq .
+  -F "textPayload=2kg rice, 1L oil, 500g sugar" \
+  -F "addressId=$ADDRESS_ID" \
+  -F "scheduledWindow=Today 4-6 PM" | jq .
 ```
 
 ---
@@ -44,9 +46,30 @@ curl -s -X POST "$BASE_URL/api/orders/submit-catalog-order" \
         \"unitPrice\": 299
       }
     ],
-    \"note\": \"Deliver by 6 PM\"
+    \"note\": \"Deliver by 6 PM\",
+    \"addressId\": \"$ADDRESS_ID\",
+    \"scheduledWindow\": \"Tomorrow 9-11 AM\"
   }" | jq .
 ```
+
+### Delivery address
+
+Use a saved address (`addressId`) or pass inline delivery fields:
+
+```json
+{
+  "deliveryAddress": "Flat 12, Roseland Residency",
+  "deliveryAreaId": "<area-uuid>",
+  "deliveryLatitude": 18.5912,
+  "deliveryLongitude": 73.7849
+}
+```
+
+Orders are rejected when the delivery point is outside the shop's `deliveryRadiusKm`.
+
+### Scheduled / pre-orders
+
+Set `scheduledWindow` to one of: `Today 4-6 PM`, `Tomorrow 9-11 AM`, `Tomorrow 4-6 PM`, or pass a custom `scheduledFor` ISO timestamp.
 
 With extra text and/or photo (multipart):
 
@@ -112,9 +135,13 @@ curl -s -X PATCH "$BASE_URL/api/orders/transition/accept/$ORDER_ID" \
   -H "Content-Type: application/json" \
   -d '{
     "finalBillAmount": 450,
-    "deliveryTimeWindow": "Today 6-8 PM"
+    "deliveryTimeWindow": "Today 6-8 PM",
+    "subtotalAmount": 500,
+    "offerId": "'"$OFFER_ID"'"
   }' | jq .
 ```
+
+`subtotalAmount` + `offerId` apply shop/platform discounts before the customer pays. Omit both to use `finalBillAmount` as-is.
 
 Partial fulfillment with optional backorder child order:
 
@@ -172,6 +199,36 @@ curl -s -X PATCH "$BASE_URL/api/orders/transition/backorder-ready/$ORDER_ID" \
     "finalBillAmount": 260,
     "deliveryTimeWindow": "Tomorrow 10 AM - 12 PM"
   }' | jq .
+```
+
+---
+
+## Cancel order (customer)
+
+Only while the order is still in `Created` status.
+
+```bash
+curl -s -X PATCH "$BASE_URL/api/orders/transition/cancel/$ORDER_ID" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"reason": "Ordered by mistake"}' | jq .
+```
+
+---
+
+## Pricing preview (shop admin)
+
+Preview discount before accepting an order.
+
+```bash
+curl -s -X POST "$BASE_URL/api/orders/pricing-preview" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"shopId\": \"$SHOP_ID\",
+    \"subtotalAmount\": 500,
+    \"offerId\": \"$OFFER_ID\"
+  }" | jq .
 ```
 
 ---
@@ -241,6 +298,17 @@ Use when Razorpay is **not** configured. Order must have `UPI_Instant` selected.
 
 ```bash
 curl -s -X PATCH "$BASE_URL/api/orders/transition/pay/$ORDER_ID" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+```
+
+---
+
+## Mark COD collected (shop admin)
+
+For `Cash_On_Delivery` orders after delivery.
+
+```bash
+curl -s -X PATCH "$BASE_URL/api/orders/transition/cod-collect/$ORDER_ID" \
   -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```
 

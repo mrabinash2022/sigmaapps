@@ -156,9 +156,13 @@ curl -s -X PATCH "$BASE_URL/api/auth/profile" \
   -d '{
     "name": "Updated Name",
     "address": "123 Main St",
-    "email": "user@example.com"
+    "email": "user@example.com",
+    "smsNotificationsEnabled": true,
+    "whatsappNotificationsEnabled": false
   }' | jq .
 ```
+
+`areaId` can also be updated when the customer moves to a different delivery area.
 
 ---
 

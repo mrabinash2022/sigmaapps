@@ -68,6 +68,22 @@ curl -s -X DELETE "$BASE_URL/api/shops/my/$SHOP_ID/catalog/items/$ITEM_ID" \
 
 ---
 
+## Bulk import catalog from CSV (shop admin)
+
+CSV header must include `name`, `itemGroup`, `price`. Optional columns: `sizeLabel`, `unit`, `description`, `trackStock`, `stockQuantity`.
+
+```bash
+curl -s -X POST "$BASE_URL/api/shops/my/$SHOP_ID/catalog/import-csv" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "csv": "name,itemGroup,price,unit,trackStock,stockQuantity\nBasmati Rice 5kg,rice,450,kg,true,20\nSunflower Oil 1L,oil,140,litre,true,15",
+    "publish": true
+  }' | jq .
+```
+
+---
+
 ## Enable / disable visual catalog for shop
 
 Requires at least one published product to enable.

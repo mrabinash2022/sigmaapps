@@ -55,7 +55,7 @@ const collection = {
         req('Refresh Token', 'POST', '/api/auth/refresh', { auth: false, body: { refreshToken: '{{refreshToken}}' } }),
         req('Logout', 'POST', '/api/auth/logout', { body: { refreshToken: '{{refreshToken}}' } }),
         req('Get Me', 'GET', '/api/auth/me'),
-        req('Update Profile', 'PATCH', '/api/auth/profile', { body: { name: 'Updated Name', address: '123 Main St' } }),
+        req('Update Profile', 'PATCH', '/api/auth/profile', { body: { name: 'Updated Name', address: '123 Main St', smsNotificationsEnabled: true, whatsappNotificationsEnabled: false } }),
         req('Upload Profile Picture', 'POST', '/api/auth/profile/picture', {
           formdata: [{ key: 'picture', type: 'file', src: [] }],
         }),
@@ -83,7 +83,26 @@ const collection = {
         req('My Invitations', 'GET', '/api/shops/my/invitations'),
         req('Complete Registration', 'POST', '/api/shops/{{shopId}}/complete-registration', { body: { name: 'Store Name', category: 'Grocery', address: 'Addr', phone: '9999999999', areaId: '{{areaId}}' } }),
         req('My Applications', 'GET', '/api/shops/my/application'),
-        req('Update My Shop', 'PATCH', '/api/shops/my/{{shopId}}', { body: { phone: '9999999999', address: 'New addr' } }),
+        req('Update My Shop', 'PATCH', '/api/shops/my/{{shopId}}', { body: { phone: '9999999999', address: 'New addr', deliveryRadiusKm: 5, lowStockThreshold: 10 } }),
+        req('List Staff', 'GET', '/api/shops/my/{{shopId}}/staff'),
+        req('Invite Staff', 'POST', '/api/shops/my/{{shopId}}/staff/invite', { body: { phone: '9876543210', name: 'Staff Member' } }),
+        req('Remove Staff', 'DELETE', '/api/shops/my/{{shopId}}/staff/{{userId}}'),
+        req('Low Stock Items', 'GET', '/api/shops/my/{{shopId}}/low-stock'),
+        req('Get Store Info', 'GET', '/api/shops/my/{{shopId}}/store-info'),
+        req('Update Store Info', 'PUT', '/api/shops/my/{{shopId}}/store-info', { body: { openTime: '09:00', closeTime: '21:00', weeklyOffDays: [0], acceptingOrders: true } }),
+        req('List Shop Offers', 'GET', '/api/shops/my/{{shopId}}/offers'),
+        req('Create Shop Offer', 'POST', '/api/shops/my/{{shopId}}/offers', {
+          formdata: [
+            { key: 'title', value: '10% off', type: 'text' },
+            { key: 'discountType', value: 'Percentage', type: 'text' },
+            { key: 'discountValue', value: '10', type: 'text' },
+            { key: 'isActive', value: 'true', type: 'text' },
+          ],
+        }),
+        req('Update Shop Offer', 'PATCH', '/api/shops/my/{{shopId}}/offers/{{offerId}}', {
+          formdata: [{ key: 'discountValue', value: '15', type: 'text' }],
+        }),
+        req('Delete Shop Offer', 'DELETE', '/api/shops/my/{{shopId}}/offers/{{offerId}}'),
       ],
     },
     {
@@ -107,6 +126,12 @@ const collection = {
         req('Publish Item', 'PATCH', '/api/shops/my/{{shopId}}/catalog/items/{{itemId}}/publish'),
         req('Unpublish Item', 'PATCH', '/api/shops/my/{{shopId}}/catalog/items/{{itemId}}/unpublish'),
         req('Delete Item', 'DELETE', '/api/shops/my/{{shopId}}/catalog/items/{{itemId}}'),
+        req('Import CSV', 'POST', '/api/shops/my/{{shopId}}/catalog/import-csv', {
+          body: {
+            csv: 'name,itemGroup,price,unit\nBasmati Rice 5kg,rice,450,kg\nSunflower Oil 1L,oil,140,litre',
+            publish: true,
+          },
+        }),
         req('Enable Visual Catalog', 'PATCH', '/api/shops/my/{{shopId}}/visual-catalog', { body: { enabled: true } }),
       ],
     },
@@ -117,6 +142,8 @@ const collection = {
           formdata: [
             { key: 'shopId', value: '{{shopId}}', type: 'text' },
             { key: 'textPayload', value: '2kg rice, 1L oil', type: 'text' },
+            { key: 'addressId', value: '{{addressId}}', type: 'text' },
+            { key: 'scheduledWindow', value: 'Tomorrow 9-11 AM', type: 'text' },
           ],
         }),
         req('Submit Catalog Order', 'POST', '/api/orders/submit-catalog-order', {
@@ -124,13 +151,16 @@ const collection = {
             shopId: '{{shopId}}',
             items: [{ catalogItemId: '{{itemId}}', name: 'Product', quantity: 1, unitPrice: 100 }],
             note: 'Deliver by 6 PM',
+            addressId: '{{addressId}}',
+            scheduledWindow: 'Tomorrow 9-11 AM',
           },
         }),
         req('Reorder', 'POST', '/api/orders/reorder/{{orderId}}'),
         req('My Orders', 'GET', '/api/orders/my'),
         req('Shop Orders', 'GET', '/api/orders/shop/{{shopId}}'),
         req('Get Order', 'GET', '/api/orders/{{orderId}}'),
-        req('Accept Order', 'PATCH', '/api/orders/transition/accept/{{orderId}}', { body: { finalBillAmount: 450, deliveryTimeWindow: 'Today 6-8 PM' } }),
+        req('Pricing Preview', 'POST', '/api/orders/pricing-preview', { body: { shopId: '{{shopId}}', subtotalAmount: 500, offerId: '{{offerId}}' } }),
+        req('Accept Order', 'PATCH', '/api/orders/transition/accept/{{orderId}}', { body: { finalBillAmount: 450, deliveryTimeWindow: 'Today 6-8 PM', subtotalAmount: 500, offerId: '{{offerId}}' } }),
         req('Accept Partial + Backorder', 'PATCH', '/api/orders/transition/accept/{{orderId}}', {
           body: {
             finalBillAmount: 380,
@@ -141,15 +171,68 @@ const collection = {
         }),
         req('Backorder Ready', 'PATCH', '/api/orders/transition/backorder-ready/{{orderId}}', { body: { finalBillAmount: 260, deliveryTimeWindow: 'Tomorrow morning' } }),
         req('Reject Order', 'PATCH', '/api/orders/transition/reject/{{orderId}}', { body: { reason: 'Out of stock' } }),
+        req('Cancel Order', 'PATCH', '/api/orders/transition/cancel/{{orderId}}', { body: { reason: 'Ordered by mistake' } }),
         req('Select Payment (COD)', 'PATCH', '/api/orders/transition/select-payment/{{orderId}}', { body: { paymentMethod: 'Cash_On_Delivery' } }),
         req('Select Payment (UPI)', 'PATCH', '/api/orders/transition/select-payment/{{orderId}}', { body: { paymentMethod: 'UPI_Instant' } }),
         req('Create Razorpay Order', 'POST', '/api/orders/transition/create-razorpay-order/{{orderId}}'),
         req('Verify Payment', 'POST', '/api/orders/transition/verify-payment/{{orderId}}', { body: { razorpayOrderId: 'order_x', razorpayPaymentId: 'pay_x', razorpaySignature: 'sig_x' } }),
         req('Mock Pay (dev)', 'PATCH', '/api/orders/transition/pay/{{orderId}}'),
+        req('COD Collect', 'PATCH', '/api/orders/transition/cod-collect/{{orderId}}'),
         req('Ship Order', 'PATCH', '/api/orders/transition/ship/{{orderId}}'),
         req('Deliver Order', 'PATCH', '/api/orders/transition/deliver/{{orderId}}'),
         req('Return Order', 'PATCH', '/api/orders/transition/return/{{orderId}}', { body: { reason: 'Wrong items' } }),
         req('Refund Order', 'POST', '/api/orders/transition/refund/{{orderId}}'),
+      ],
+    },
+    {
+      name: 'Home',
+      item: [
+        req('Customer Home', 'GET', '/api/home/customer'),
+        req('Shopkeeper Home', 'GET', '/api/home/shopkeeper'),
+        req('Super Admin Home', 'GET', '/api/home/super-admin?metric=revenue&limit=10'),
+        req('List Favorites', 'GET', '/api/home/favorites'),
+        req('Add Favorite', 'POST', '/api/home/favorites/{{shopId}}'),
+        req('Remove Favorite', 'DELETE', '/api/home/favorites/{{shopId}}'),
+      ],
+    },
+    {
+      name: 'Reports',
+      item: [
+        req('Order Report (JSON)', 'GET', '/api/reports/orders?preset=week'),
+        req('Export Report (Excel)', 'GET', '/api/reports/orders/export?preset=week&format=xlsx'),
+        req('Export Report (PDF)', 'GET', '/api/reports/orders/export?preset=week&format=pdf'),
+      ],
+    },
+    {
+      name: 'Addresses',
+      item: [
+        req('List Addresses', 'GET', '/api/addresses'),
+        req('Create Address', 'POST', '/api/addresses', { body: { label: 'Home', address: 'Flat 12, Roseland Residency', areaId: '{{areaId}}', isDefault: true } }),
+        req('Update Address', 'PATCH', '/api/addresses/{{addressId}}', { body: { label: 'Office', address: 'Tech Park' } }),
+        req('Delete Address', 'DELETE', '/api/addresses/{{addressId}}'),
+      ],
+    },
+    {
+      name: 'Wishlist',
+      item: [
+        req('List Wishlist', 'GET', '/api/wishlist'),
+        req('Wishlist IDs', 'GET', '/api/wishlist/ids?shopId={{shopId}}'),
+        req('Add to Wishlist', 'POST', '/api/wishlist', { body: { catalogItemId: '{{itemId}}' } }),
+        req('Remove from Wishlist', 'DELETE', '/api/wishlist/{{itemId}}'),
+      ],
+    },
+    {
+      name: 'Ratings',
+      item: [
+        req('Rate Order', 'POST', '/api/ratings/orders/{{orderId}}', { body: { rating: 5, comment: 'Great service' } }),
+        req('Get Order Rating', 'GET', '/api/ratings/orders/{{orderId}}'),
+      ],
+    },
+    {
+      name: 'Analytics',
+      item: [
+        req('Platform Analytics', 'GET', '/api/analytics/platform?days=30'),
+        req('Shop Insights', 'GET', '/api/analytics/shop/{{shopId}}?days=30'),
       ],
     },
     {
@@ -184,6 +267,25 @@ const collection = {
         req('Set User Account Status', 'PATCH', '/api/admin/users/{{userId}}/account-status', { body: { accountStatus: 'disabled' } }),
         req('Delete User', 'DELETE', '/api/admin/users/{{userId}}'),
         req('Change User Role', 'PATCH', '/api/admin/users/{{userId}}/role', { body: { role: 'admin' } }),
+        req('List Platform Offers', 'GET', '/api/admin/platform-offers'),
+        req('Create Platform Offer', 'POST', '/api/admin/platform-offers', {
+          formdata: [
+            { key: 'title', value: 'Free delivery', type: 'text' },
+            { key: 'discountType', value: 'Flat', type: 'text' },
+            { key: 'discountValue', value: '50', type: 'text' },
+            { key: 'isActive', value: 'true', type: 'text' },
+          ],
+        }),
+        req('Update Platform Offer', 'PATCH', '/api/admin/platform-offers/{{offerId}}', {
+          formdata: [{ key: 'isActive', value: 'false', type: 'text' }],
+        }),
+        req('Delete Platform Offer', 'DELETE', '/api/admin/platform-offers/{{offerId}}'),
+        req('List Announcements', 'GET', '/api/admin/announcements'),
+        req('Create Announcement', 'POST', '/api/admin/announcements', {
+          body: { title: 'Maintenance', body: 'Tonight 2-3 AM', audience: 'Shopkeepers', isActive: true },
+        }),
+        req('Update Announcement', 'PATCH', '/api/admin/announcements/{{announcementId}}', { body: { isActive: false } }),
+        req('Delete Announcement', 'DELETE', '/api/admin/announcements/{{announcementId}}'),
       ],
     },
     {

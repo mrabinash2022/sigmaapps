@@ -58,7 +58,9 @@ Authorization: Bearer <accessToken>
 | [03-orders.md](03-orders.md) | Order lifecycle |
 | [04-admin.md](04-admin.md) | Super admin shop & user management |
 | [05-support-and-webhooks.md](05-support-and-webhooks.md) | Support tickets, Razorpay webhook |
-| [06-catalog-app-logs.md](06-catalog-app-logs.md) | Catalog CRUD, app info, referrals, client logs |
+| [06-catalog-app-logs.md](06-catalog-app-logs.md) | Catalog CRUD, CSV import, app info, referrals, client logs |
+| [07-home-reports-offers.md](07-home-reports-offers.md) | Home screens, favorites, reports, store info, offers, announcements |
+| [08-addresses-wishlist-ratings.md](08-addresses-wishlist-ratings.md) | Saved addresses, wishlist, ratings, analytics |
 | [localite.postman_collection.json](localite.postman_collection.json) | Postman collection (import all endpoints) |
 | [localite.postman_environment.json](localite.postman_environment.json) | Postman environment variables |
 

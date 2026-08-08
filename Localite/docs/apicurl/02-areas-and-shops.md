@@ -123,6 +123,57 @@ curl -s -X PATCH "$BASE_URL/api/shops/my/$SHOP_ID" \
     "phone": "9999999999",
     "address": "Updated address",
     "itemTypes": "Sweets, snacks",
-    "description": "Updated description"
+    "description": "Updated description",
+    "latitude": 18.5912,
+    "longitude": 73.7849,
+    "deliveryRadiusKm": 5,
+    "lowStockThreshold": 10
   }' | jq .
+```
+
+`deliveryRadiusKm` limits how far customers can place delivery orders from the shop location.
+
+---
+
+## List shop staff (admin)
+
+```bash
+curl -s "$BASE_URL/api/shops/my/$SHOP_ID/staff" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+```
+
+---
+
+## Invite shop staff (owner only)
+
+```bash
+curl -s -X POST "$BASE_URL/api/shops/my/$SHOP_ID/staff/invite" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phone": "9876543210",
+    "name": "Staff Member"
+  }' | jq .
+```
+
+Creates an admin user if the phone is new, then links them as `staff` for this shop.
+
+---
+
+## Remove shop staff (owner only)
+
+```bash
+curl -s -X DELETE "$BASE_URL/api/shops/my/$SHOP_ID/staff/$USER_ID" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+```
+
+---
+
+## Low-stock catalog items (admin)
+
+Returns published items at or below the shop's `lowStockThreshold` (default 5).
+
+```bash
+curl -s "$BASE_URL/api/shops/my/$SHOP_ID/low-stock" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
 ```

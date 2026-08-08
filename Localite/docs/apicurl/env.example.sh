@@ -10,6 +10,9 @@ export ORDER_ID=""
 export ITEM_ID=""
 export USER_ID=""
 export TICKET_ID=""
+export ADDRESS_ID=""
+export OFFER_ID=""
+export ANNOUNCEMENT_ID=""
 
 # Demo credentials
 export SUPER_ADMIN_ID="9000000001"

@@ -376,7 +376,7 @@
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Updated Name\",\n  \"address\": \"123 Main St\"\n}",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"address\": \"123 Main St\",\n  \"smsNotificationsEnabled\": true,\n  \"whatsappNotificationsEnabled\": false\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -678,13 +678,216 @@
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"phone\": \"9999999999\",\n  \"address\": \"New addr\"\n}",
+              "raw": "{\n  \"phone\": \"9999999999\",\n  \"address\": \"New addr\",\n  \"deliveryRadiusKm\": 5,\n  \"lowStockThreshold\": 10\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             }
+          }
+        },
+        {
+          "name": "List Staff",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/shops/my/{{shopId}}/staff",
+            "description": ""
+          }
+        },
+        {
+          "name": "Invite Staff",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/shops/my/{{shopId}}/staff/invite",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9876543210\",\n  \"name\": \"Staff Member\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Remove Staff",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/shops/my/{{shopId}}/staff/{{userId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "Low Stock Items",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/shops/my/{{shopId}}/low-stock",
+            "description": ""
+          }
+        },
+        {
+          "name": "Get Store Info",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/shops/my/{{shopId}}/store-info",
+            "description": ""
+          }
+        },
+        {
+          "name": "Update Store Info",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/shops/my/{{shopId}}/store-info",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"openTime\": \"09:00\",\n  \"closeTime\": \"21:00\",\n  \"weeklyOffDays\": [\n    0\n  ],\n  \"acceptingOrders\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List Shop Offers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/shops/my/{{shopId}}/offers",
+            "description": ""
+          }
+        },
+        {
+          "name": "Create Shop Offer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/shops/my/{{shopId}}/offers",
+            "description": "",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "10% off",
+                  "type": "text"
+                },
+                {
+                  "key": "discountType",
+                  "value": "Percentage",
+                  "type": "text"
+                },
+                {
+                  "key": "discountValue",
+                  "value": "10",
+                  "type": "text"
+                },
+                {
+                  "key": "isActive",
+                  "value": "true",
+                  "type": "text"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Shop Offer",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/shops/my/{{shopId}}/offers/{{offerId}}",
+            "description": "",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "discountValue",
+                  "value": "15",
+                  "type": "text"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Shop Offer",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/shops/my/{{shopId}}/offers/{{offerId}}",
+            "description": ""
           }
         }
       ]
@@ -823,6 +1026,30 @@
           }
         },
         {
+          "name": "Import CSV",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/shops/my/{{shopId}}/catalog/import-csv",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"csv\": \"name,itemGroup,price,unit\\nBasmati Rice 5kg,rice,450,kg\\nSunflower Oil 1L,oil,140,litre\",\n  \"publish\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
           "name": "Enable Visual Catalog",
           "request": {
             "method": "PATCH",
@@ -876,6 +1103,16 @@
                   "key": "textPayload",
                   "value": "2kg rice, 1L oil",
                   "type": "text"
+                },
+                {
+                  "key": "addressId",
+                  "value": "{{addressId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "scheduledWindow",
+                  "value": "Tomorrow 9-11 AM",
+                  "type": "text"
                 }
               ]
             }
@@ -896,7 +1133,7 @@
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"shopId\": \"{{shopId}}\",\n  \"items\": [\n    {\n      \"catalogItemId\": \"{{itemId}}\",\n      \"name\": \"Product\",\n      \"quantity\": 1,\n      \"unitPrice\": 100\n    }\n  ],\n  \"note\": \"Deliver by 6 PM\"\n}",
+              "raw": "{\n  \"shopId\": \"{{shopId}}\",\n  \"items\": [\n    {\n      \"catalogItemId\": \"{{itemId}}\",\n      \"name\": \"Product\",\n      \"quantity\": 1,\n      \"unitPrice\": 100\n    }\n  ],\n  \"note\": \"Deliver by 6 PM\",\n  \"addressId\": \"{{addressId}}\",\n  \"scheduledWindow\": \"Tomorrow 9-11 AM\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -966,6 +1203,30 @@
           }
         },
         {
+          "name": "Pricing Preview",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/orders/pricing-preview",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shopId\": \"{{shopId}}\",\n  \"subtotalAmount\": 500,\n  \"offerId\": \"{{offerId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
           "name": "Accept Order",
           "request": {
             "method": "PATCH",
@@ -980,7 +1241,7 @@
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"finalBillAmount\": 450,\n  \"deliveryTimeWindow\": \"Today 6-8 PM\"\n}",
+              "raw": "{\n  \"finalBillAmount\": 450,\n  \"deliveryTimeWindow\": \"Today 6-8 PM\",\n  \"subtotalAmount\": 500,\n  \"offerId\": \"{{offerId}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1053,6 +1314,30 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"reason\": \"Out of stock\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cancel Order",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/orders/transition/cancel/{{orderId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Ordered by mistake\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1164,6 +1449,21 @@
           }
         },
         {
+          "name": "COD Collect",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/orders/transition/cod-collect/{{orderId}}",
+            "description": ""
+          }
+        },
+        {
           "name": "Ship Order",
           "request": {
             "method": "PATCH",
@@ -1229,6 +1529,387 @@
               }
             ],
             "url": "{{baseUrl}}/api/orders/transition/refund/{{orderId}}",
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Home",
+      "item": [
+        {
+          "name": "Customer Home",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/home/customer",
+            "description": ""
+          }
+        },
+        {
+          "name": "Shopkeeper Home",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/home/shopkeeper",
+            "description": ""
+          }
+        },
+        {
+          "name": "Super Admin Home",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/home/super-admin?metric=revenue&limit=10",
+            "description": ""
+          }
+        },
+        {
+          "name": "List Favorites",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/home/favorites",
+            "description": ""
+          }
+        },
+        {
+          "name": "Add Favorite",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/home/favorites/{{shopId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "Remove Favorite",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/home/favorites/{{shopId}}",
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Order Report (JSON)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/reports/orders?preset=week",
+            "description": ""
+          }
+        },
+        {
+          "name": "Export Report (Excel)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/reports/orders/export?preset=week&format=xlsx",
+            "description": ""
+          }
+        },
+        {
+          "name": "Export Report (PDF)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/reports/orders/export?preset=week&format=pdf",
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Addresses",
+      "item": [
+        {
+          "name": "List Addresses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/addresses",
+            "description": ""
+          }
+        },
+        {
+          "name": "Create Address",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/addresses",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Home\",\n  \"address\": \"Flat 12, Roseland Residency\",\n  \"areaId\": \"{{areaId}}\",\n  \"isDefault\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Update Address",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/addresses/{{addressId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Office\",\n  \"address\": \"Tech Park\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete Address",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/addresses/{{addressId}}",
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wishlist",
+      "item": [
+        {
+          "name": "List Wishlist",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/wishlist",
+            "description": ""
+          }
+        },
+        {
+          "name": "Wishlist IDs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/wishlist/ids?shopId={{shopId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "Add to Wishlist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/wishlist",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"catalogItemId\": \"{{itemId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Remove from Wishlist",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/wishlist/{{itemId}}",
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ratings",
+      "item": [
+        {
+          "name": "Rate Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ratings/orders/{{orderId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"comment\": \"Great service\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Order Rating",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ratings/orders/{{orderId}}",
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Platform Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/analytics/platform?days=30",
+            "description": ""
+          }
+        },
+        {
+          "name": "Shop Insights",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/analytics/shop/{{shopId}}?days=30",
             "description": ""
           }
         }
@@ -1690,6 +2371,179 @@
                 }
               }
             }
+          }
+        },
+        {
+          "name": "List Platform Offers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/platform-offers",
+            "description": ""
+          }
+        },
+        {
+          "name": "Create Platform Offer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/platform-offers",
+            "description": "",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Free delivery",
+                  "type": "text"
+                },
+                {
+                  "key": "discountType",
+                  "value": "Flat",
+                  "type": "text"
+                },
+                {
+                  "key": "discountValue",
+                  "value": "50",
+                  "type": "text"
+                },
+                {
+                  "key": "isActive",
+                  "value": "true",
+                  "type": "text"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Platform Offer",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/platform-offers/{{offerId}}",
+            "description": "",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "isActive",
+                  "value": "false",
+                  "type": "text"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Platform Offer",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/platform-offers/{{offerId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "List Announcements",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/announcements",
+            "description": ""
+          }
+        },
+        {
+          "name": "Create Announcement",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/announcements",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Maintenance\",\n  \"body\": \"Tonight 2-3 AM\",\n  \"audience\": \"Shopkeepers\",\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Update Announcement",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/announcements/{{announcementId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete Announcement",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/announcements/{{announcementId}}",
+            "description": ""
           }
         }
       ]
