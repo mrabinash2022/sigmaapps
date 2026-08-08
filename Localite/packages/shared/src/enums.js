@@ -51,6 +51,7 @@ export const OrderStatus = {
   DELIVERED: 'Delivered',
   REJECTED: 'Rejected',
   RETURNED: 'Returned',
+  CANCELLED: 'Cancelled',
   BACKORDER_WAITING: 'Backorder_Waiting',
 };
 
@@ -83,12 +84,13 @@ export const TicketStatus = {
 };
 
 export const ORDER_TRANSITIONS = {
-  [OrderStatus.CREATED]: [OrderStatus.ACCEPTED, OrderStatus.REJECTED],
-  [OrderStatus.ACCEPTED]: [OrderStatus.SHIPPED],
+  [OrderStatus.CREATED]: [OrderStatus.ACCEPTED, OrderStatus.REJECTED, OrderStatus.CANCELLED],
+  [OrderStatus.ACCEPTED]: [OrderStatus.SHIPPED, OrderStatus.CANCELLED],
   [OrderStatus.SHIPPED]: [OrderStatus.DELIVERED, OrderStatus.RETURNED],
   [OrderStatus.DELIVERED]: [OrderStatus.RETURNED],
   [OrderStatus.REJECTED]: [],
   [OrderStatus.RETURNED]: [],
+  [OrderStatus.CANCELLED]: [],
   [OrderStatus.BACKORDER_WAITING]: [OrderStatus.ACCEPTED, OrderStatus.REJECTED],
 };
 

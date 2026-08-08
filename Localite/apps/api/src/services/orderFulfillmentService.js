@@ -11,7 +11,7 @@ import {
   getFulfilledLines,
   normalizeFulfillmentInput,
 } from '@localite/shared';
-import { buildVisualOrderText } from './catalogService.js';
+import { buildVisualOrderText, applyFulfillmentStockAdjustments } from './catalogService.js';
 import { recordOrderEvent } from './orderService.js';
 import { notifyOrderUpdate } from './notificationService.js';
 
@@ -86,6 +86,8 @@ export async function acceptOrderWithFulfillment({
     deliveryTimeWindow,
     fulfillmentPayload,
   });
+
+  await applyFulfillmentStockAdjustments(normalized);
 
   let backorderOrder = null;
   if (createBackorder && hasUnavailable) {

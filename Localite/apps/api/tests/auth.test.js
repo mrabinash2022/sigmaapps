@@ -51,4 +51,23 @@ describe('Auth', () => {
     expect(res.status).toBe(200);
     expect(res.body.accessToken).toBeTruthy();
   });
+
+  it('resets password via forgot-password flow', async () => {
+    const sendRes = await api()
+      .post('/api/auth/forgot-password/send-otp')
+      .send({ phone: DEMO.customer.identifier });
+
+    expect(sendRes.status).toBe(200);
+
+    const resetRes = await api()
+      .post('/api/auth/forgot-password/reset')
+      .send({
+        phone: DEMO.customer.identifier,
+        otp: '123456',
+        password: DEMO.customer.password,
+      });
+
+    expect(resetRes.status).toBe(200);
+    expect(resetRes.body.message).toMatch(/reset/i);
+  });
 });

@@ -11,6 +11,7 @@ function matchCompleted(order) {
     OrderStatus.DELIVERED,
     OrderStatus.REJECTED,
     OrderStatus.RETURNED,
+    OrderStatus.CANCELLED,
   ].includes(order.orderStatus);
 }
 
@@ -67,6 +68,7 @@ const STATUS_PRIORITY = {
   [OrderStatus.RETURNED]: 5,
   [OrderStatus.DELIVERED]: 6,
   [OrderStatus.REJECTED]: 7,
+  [OrderStatus.CANCELLED]: 8,
 };
 
 /** Sort orders for shop queue: status priority, then oldest first within each group. */

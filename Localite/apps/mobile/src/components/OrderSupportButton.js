@@ -44,7 +44,7 @@ export function OrderSupportButton({ orderId, compact = false }) {
   );
 }
 
-function OrderSupportModal({ orderId, visible, onClose }) {
+export function OrderSupportModal({ orderId, visible, onClose }) {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);

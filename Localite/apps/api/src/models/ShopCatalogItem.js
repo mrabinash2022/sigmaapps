@@ -62,6 +62,17 @@ const ShopCatalogItem = sequelize.define('ShopCatalogItem', {
     defaultValue: 'draft',
     field: 'publish_status',
   },
+  trackStock: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    field: 'track_stock',
+  },
+  stockQuantity: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    field: 'stock_quantity',
+  },
 });
 
 export default ShopCatalogItem;

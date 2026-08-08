@@ -7,6 +7,7 @@
 --
 -- CHANGELOG
 -- ---------
+-- 2026-08-08  v0.8  Cancelled order status; cancellation_reason, cancelled_at; catalog stock (track_stock, stock_quantity)
 -- 2026-08-06  v0.7  Partial fulfillment: Backorder_Waiting status; parent_order_id, fulfillment_payload on Orders
 -- 2026-08-06  v0.6  Orders Returned status; Refund_Pending/Refunded payment; return_reason, razorpay_refund_id
 -- 2026-08-06  v0.5  Orders.order_status Rejected; rejection_reason column

@@ -64,4 +64,26 @@ export async function migrateOrderSchema() {
     ALTER TABLE "Orders"
     ADD COLUMN IF NOT EXISTS fulfillment_payload JSONB;
   `);
+
+  await sequelize.query(`
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_enum e
+        JOIN pg_type t ON e.enumtypid = t.oid
+        WHERE t.typname = 'enum_Orders_order_status' AND e.enumlabel = 'Cancelled'
+      ) THEN
+        ALTER TYPE "enum_Orders_order_status" ADD VALUE 'Cancelled';
+      END IF;
+    END $$;
+  `);
+
+  await sequelize.query(`
+    ALTER TABLE "Orders"
+    ADD COLUMN IF NOT EXISTS cancellation_reason TEXT;
+  `);
+
+  await sequelize.query(`
+    ALTER TABLE "Orders"
+    ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ;
+  `);
 }

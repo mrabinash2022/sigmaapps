@@ -17,7 +17,7 @@ const OtpSession = sequelize.define('OtpSession', {
     defaultValue: 'sms',
   },
   purpose: {
-    type: DataTypes.ENUM('login', 'register'),
+    type: DataTypes.ENUM('login', 'register', 'password_reset'),
     allowNull: false,
     defaultValue: 'login',
   },

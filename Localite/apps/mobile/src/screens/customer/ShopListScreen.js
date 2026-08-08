@@ -9,10 +9,12 @@ import {
   Modal,
   Pressable,
   Image,
+  TextInput,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { api, PAGE_LIMIT } from '../../services/api';
-import { formatOfferDiscount, formatWeeklyOffDays, shopHasVisualCatalog } from '@localite/shared';
+import { formatOfferDiscount, formatWeeklyOffDays, shopHasVisualCatalog, ShopCategory } from '@localite/shared';
 import { useTheme } from '../../context/ThemeContext';
 import ScreenLayout from '../../components/ScreenLayout';
 import { resolveMediaUrl } from '../../utils/profile';
@@ -27,6 +29,8 @@ const CATEGORY_COLORS = {
   Nursery: '#15803d',
 };
 
+const CATEGORY_OPTIONS = ['All', ...Object.values(ShopCategory)];
+
 export default function ShopListScreen({ navigation }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -39,6 +43,14 @@ export default function ShopListScreen({ navigation }) {
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     api.getAreas().then(({ areas: a }) => {
@@ -57,7 +69,14 @@ export default function ShopListScreen({ navigation }) {
     if (append) setLoadingMore(true);
     else setLoading(true);
     try {
-      const res = await api.getShopsByArea(selectedArea.id, { page: nextPage, limit: PAGE_LIMIT });
+      const category = selectedCategory === 'All' ? undefined : selectedCategory;
+      const res = await api.getShopsByArea(selectedArea.id, {
+        page: nextPage,
+        limit: PAGE_LIMIT,
+        category,
+        q: debouncedQuery || undefined,
+        force: true,
+      });
       const items = res.items || [];
       setShops(append ? (prev) => [...prev, ...items] : items);
       setPage(nextPage);
@@ -68,12 +87,12 @@ export default function ShopListScreen({ navigation }) {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [selectedArea]);
+  }, [selectedArea, selectedCategory, debouncedQuery]);
 
   useEffect(() => {
     if (!selectedArea) return;
     loadShops({ nextPage: 1 });
-  }, [selectedArea, loadShops]);
+  }, [selectedArea, selectedCategory, debouncedQuery, loadShops]);
 
   const loadMore = () => {
     if (!loadingMore && hasMore && !loading) {
@@ -114,6 +133,28 @@ export default function ShopListScreen({ navigation }) {
         <Text style={styles.heading}>Shops in {selectedArea?.name}</Text>
         <Text style={styles.sub}>{selectedArea?.city}</Text>
 
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search shops by name..."
+          placeholderTextColor={colors.textSecondary}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
+          {CATEGORY_OPTIONS.map((cat) => (
+            <TouchableOpacity
+              key={cat}
+              style={[styles.filterChip, selectedCategory === cat && styles.filterChipActive]}
+              onPress={() => setSelectedCategory(cat)}
+            >
+              <Text style={[styles.filterChipText, selectedCategory === cat && styles.filterChipTextActive]}>
+                {cat}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
         <FlatList
           testID="shop-list"
           data={shops}
@@ -129,15 +170,22 @@ export default function ShopListScreen({ navigation }) {
             const storeInfo = item.storeInfo;
             const isFavorite = favoriteIds.has(item.id);
             const bannerUrl = resolveMediaUrl(topOffer?.bannerImageUrl);
+            const isClosed = storeInfo?.status && !storeInfo.status.isOpen;
 
             return (
               <TouchableOpacity
                 testID="shop-card"
-                style={styles.card}
-                onPress={() => navigation.navigate(
-                  shopHasVisualCatalog(item) ? 'CatalogOrder' : 'PlaceOrder',
-                  { shop: item },
-                )}
+                style={[styles.card, isClosed && styles.cardClosed]}
+                onPress={() => {
+                  if (isClosed) {
+                    return;
+                  }
+                  navigation.navigate(
+                    shopHasVisualCatalog(item) ? 'CatalogOrder' : 'PlaceOrder',
+                    { shop: item },
+                  );
+                }}
+                disabled={isClosed}
               >
                 <View style={styles.cardTop}>
                   <View style={[styles.badge, { backgroundColor: CATEGORY_COLORS[item.category] || '#999' }]}>
@@ -245,7 +293,32 @@ function createStyles(colors) {
     container: { flex: 1, padding: 16, backgroundColor: colors.background },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
     heading: { fontSize: 22, fontWeight: '700', color: colors.text },
-    sub: { fontSize: 14, color: colors.textSecondary, marginBottom: 16 },
+    sub: { fontSize: 14, color: colors.textSecondary, marginBottom: 8 },
+    searchInput: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      fontSize: 15,
+      color: colors.text,
+      backgroundColor: colors.card,
+      marginBottom: 10,
+    },
+    filterRow: { marginBottom: 12, maxHeight: 40 },
+    filterChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginRight: 8,
+      backgroundColor: colors.card,
+    },
+    filterChipActive: { borderColor: colors.brand, backgroundColor: colors.linkCardBg },
+    filterChipText: { fontSize: 12, color: colors.textSecondary, fontWeight: '600' },
+    filterChipTextActive: { color: colors.brand },
+    cardClosed: { opacity: 0.65 },
     card: {
       backgroundColor: colors.card,
       borderRadius: 12,

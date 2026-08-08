@@ -57,3 +57,22 @@ export async function upsertStoreInfo(ShopStoreInfo, shopId, body) {
   const [record] = await ShopStoreInfo.upsert({ shopId, ...attrs });
   return serializeStoreInfo(record);
 }
+
+export async function getShopStoreInfo(ShopStoreInfo, shopId) {
+  const row = await ShopStoreInfo.findOne({ where: { shopId } });
+  return serializeStoreInfo(row);
+}
+
+export async function assertShopAcceptingOrders(ShopStoreInfo, shopId) {
+  const storeInfo = await getShopStoreInfo(ShopStoreInfo, shopId);
+  if (!storeInfo) return storeInfo;
+
+  const { isOpen, label } = storeInfo.status || {};
+  if (!isOpen) {
+    const err = new Error(label || 'This shop is not accepting orders right now');
+    err.statusCode = 403;
+    err.code = 'SHOP_CLOSED';
+    throw err;
+  }
+  return storeInfo;
+}

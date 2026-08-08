@@ -206,6 +206,7 @@ export function getOrderItemsList(order) {
       entries.push({
         kind: 'catalog',
         key: item.catalogItemId || `catalog-${idx}`,
+        catalogItemId: item.catalogItemId,
         name: item.name,
         quantity: item.quantity,
         unitPrice: item.unitPrice,

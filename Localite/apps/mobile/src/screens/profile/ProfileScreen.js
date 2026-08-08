@@ -193,6 +193,26 @@ export default function ProfileScreen() {
         </Text>
       </TouchableOpacity>
 
+      {isCustomer && (
+        <TouchableOpacity
+          style={styles.ordersLink}
+          onPress={() => navigation.navigate('MyTickets')}
+        >
+          <Text style={styles.ordersLinkTitle}>Support tickets</Text>
+          <Text style={styles.ordersLinkSub}>View and follow up on issues raised with shops</Text>
+        </TouchableOpacity>
+      )}
+
+      {isAdmin && (
+        <TouchableOpacity
+          style={styles.ordersLink}
+          onPress={() => navigation.navigate('SupportInbox')}
+        >
+          <Text style={styles.ordersLinkTitle}>Support inbox</Text>
+          <Text style={styles.ordersLinkSub}>Respond to customer support requests for your shop</Text>
+        </TouchableOpacity>
+      )}
+
       {isAdmin && (
         <>
           <TouchableOpacity

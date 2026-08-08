@@ -3,7 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import sequelize from '../database.js';
-import { Order, Shop, ShopUser } from '../models/index.js';
+import { Order, Shop, ShopUser, ShopStoreInfo } from '../models/index.js';
 import {
   OrderStatus,
   OrderType,
@@ -13,6 +13,7 @@ import {
   isShopOrderable,
   hasUnavailableItems,
   buildVisualOrderPayload,
+  canCustomerCancelOrder,
 } from '@localite/shared';
 import { authenticate, requireRole, requireOnboarded } from '../middleware/auth.js';
 import {
@@ -22,6 +23,7 @@ import {
   validateAcceptPayload,
   validateRejectPayload,
   validateReturnPayload,
+  validateCancelPayload,
 } from '../services/orderStateMachine.js';
 import { createOrderFromReorder } from '../services/orderReorderService.js';
 import { getOrderWithDetails, recordOrderEvent } from '../services/orderService.js';
@@ -33,6 +35,7 @@ import {
 import { buildCatalogOrderPayload, assertVisualOrderHasContent, buildVisualOrderText, buildStoredOrderPayload, shopSupportsVisualCatalog } from '../services/catalogService.js';
 import { uploadImage } from '../services/storageService.js';
 import { notifyOrderUpdate } from '../services/notificationService.js';
+import { assertShopAcceptingOrders } from '../services/storeInfoService.js';
 import {
   createRazorpayOrder,
   isRazorpayEnabled,
@@ -99,6 +102,7 @@ router.post(
       if (!shop || !isShopOrderable(shop)) {
         return res.status(404).json({ error: 'Shop not found' });
       }
+      await assertShopAcceptingOrders(ShopStoreInfo, shopId);
 
       let orderType = OrderType.TEXT_LIST;
       let imagePayloadUrl = null;
@@ -157,6 +161,7 @@ router.post(
       if (!shop || !isShopOrderable(shop)) {
         return res.status(404).json({ error: 'Shop not found' });
       }
+      await assertShopAcceptingOrders(ShopStoreInfo, shopId);
       if (!(await shopSupportsVisualCatalog(shop))) {
         return res.status(400).json({ error: 'This shop does not support visual catalog ordering' });
       }
@@ -411,6 +416,47 @@ router.patch('/transition/reject/:orderId', authenticate, requireRole(UserRole.A
     });
 
     const full = await notifyAfterUpdate(order.id, 'Rejected');
+    res.json({ order: full });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/transition/cancel/:orderId', authenticate, requireRole(UserRole.CUSTOMER), async (req, res, next) => {
+  try {
+    const { reason } = req.body;
+    validateCancelPayload({ reason });
+
+    const order = await Order.findByPk(req.params.orderId);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    if (order.customerId !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    if (!canCustomerCancelOrder(order)) {
+      return res.status(400).json({
+        error: 'This order can no longer be cancelled. Contact the shop if you need help.',
+      });
+    }
+
+    assertTransition(order.orderStatus, OrderStatus.CANCELLED);
+
+    const fromStatus = order.orderStatus;
+    const cancellationReason = reason.trim();
+    await order.update({
+      orderStatus: OrderStatus.CANCELLED,
+      cancellationReason,
+      cancelledAt: new Date(),
+    });
+
+    await recordOrderEvent({
+      orderId: order.id,
+      fromStatus,
+      toStatus: OrderStatus.CANCELLED,
+      actorId: req.user.id,
+      note: `Cancelled by customer: ${cancellationReason}`,
+    });
+
+    const full = await notifyAfterUpdate(order.id, 'Cancelled');
     res.json({ order: full });
   } catch (err) {
     next(err);

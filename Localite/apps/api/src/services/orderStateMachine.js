@@ -58,4 +58,13 @@ export function validateAcceptPayload({ finalBillAmount, deliveryTimeWindow }) {
   }
 }
 
+export function validateCancelPayload({ reason }) {
+  if (!reason?.trim()) {
+    throw new OrderStateError('A cancellation reason is required');
+  }
+  if (reason.trim().length < 3) {
+    throw new OrderStateError('Cancellation reason must be at least 3 characters');
+  }
+}
+
 export { OrderStatus };

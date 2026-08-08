@@ -365,6 +365,15 @@ export default function ManageOrderScreen({ route, navigation }) {
           <TouchableOpacity style={styles.btn} onPress={activateBackorder}>
             <Text style={styles.btnText}>Activate backorder & notify customer</Text>
           </TouchableOpacity>
+
+          <View style={styles.rejectDivider} />
+          <Text style={styles.sectionTitle}>Cannot fulfill backorder?</Text>
+          <Text style={styles.rejectHint}>
+            Reject if items will not be available. The customer will be notified.
+          </Text>
+          <TouchableOpacity style={styles.rejectBtn} onPress={reject}>
+            <Text style={styles.btnText}>Reject backorder</Text>
+          </TouchableOpacity>
         </View>
       )}
 

@@ -70,4 +70,24 @@ describe('Areas & Shops', () => {
     expect(res.body).toHaveProperty('items');
     expect(res.body).toHaveProperty('visualCatalogEnabled');
   });
+
+  it('filters shops by category', async () => {
+    const area = await getFirstArea();
+
+    const res = await api().get(`/api/shops/area/${area.id}?category=Grocery&limit=50`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.items.length).toBeGreaterThan(0);
+    expect(res.body.items.every((s) => s.category === 'Grocery')).toBe(true);
+  });
+
+  it('searches shops by name', async () => {
+    const area = await getFirstArea();
+
+    const res = await api().get(`/api/shops/area/${area.id}?q=Daily%20Needs&limit=50`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.items.length).toBeGreaterThan(0);
+    expect(res.body.items.some((s) => s.name.includes('Daily Needs'))).toBe(true);
+  });
 });

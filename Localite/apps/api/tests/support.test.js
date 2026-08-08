@@ -5,6 +5,7 @@ import {
   DEMO,
   getFirstArea,
   getDailyNeedsShop,
+  getShopAdminShop,
 } from './helpers.js';
 
 describe('Support tickets', () => {
@@ -75,5 +76,19 @@ describe('Support tickets', () => {
 
     expect(res.status).toBe(201);
     expect(res.body.ticket.messages?.length).toBeGreaterThan(0);
+  });
+
+  it('shop admin lists active tickets for their shop', async () => {
+    const { token: adminToken } = await login(DEMO.shopAdmin);
+    const shop = await getShopAdminShop(adminToken);
+
+    const res = await api()
+      .get(`/api/support/merchant/active/${shop.id}`)
+      .set(authHeader(adminToken));
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.tickets)).toBe(true);
+    expect(res.body.tickets.some((t) => t.id === ticketId)).toBe(true);
+    expect(res.body.tickets.every((t) => ['Open', 'Acknowledged'].includes(t.ticketStatus))).toBe(true);
   });
 });

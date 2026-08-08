@@ -216,6 +216,10 @@ export const api = {
   sendOtp: (phone) => request('/api/auth/send-otp', { method: 'POST', body: JSON.stringify({ phone }) }),
   verifyOtp: (phone, otp) =>
     request('/api/auth/verify-otp', { method: 'POST', body: JSON.stringify({ phone, otp }) }),
+  forgotPasswordSendOtp: (phone) =>
+    request('/api/auth/forgot-password/send-otp', { method: 'POST', body: JSON.stringify({ phone }) }),
+  forgotPasswordReset: (phone, otp, password) =>
+    request('/api/auth/forgot-password/reset', { method: 'POST', body: JSON.stringify({ phone, otp, password }) }),
   logout: (rt) => logoutRequest(rt),
   getMe: () => request('/api/auth/me'),
   updateProfile: (body) =>
@@ -240,9 +244,9 @@ export const api = {
   // Areas & Shops
   getAreas: ({ force = false } = {}) =>
     requestCached('/api/areas', MobileCacheTTL.AREAS_MS, { force }),
-  getShopsByArea: (areaId, { category, page = 1, limit = PAGE_LIMIT, force = false } = {}) =>
+  getShopsByArea: (areaId, { category, q, page = 1, limit = PAGE_LIMIT, force = false } = {}) =>
     requestCached(
-      `/api/shops/area/${areaId}${buildQuery({ category, page, limit })}`,
+      `/api/shops/area/${areaId}${buildQuery({ category, q, page, limit })}`,
       MobileCacheTTL.SHOPS_BY_AREA_MS,
       { force },
     ),
@@ -435,6 +439,12 @@ export const api = {
   rejectOrder: (orderId, reason) =>
     mutateAndInvalidate(
       `/api/orders/transition/reject/${orderId}`,
+      { method: 'PATCH', body: JSON.stringify({ reason }) },
+      invalidateOrdersCache,
+    ),
+  cancelOrder: (orderId, reason) =>
+    mutateAndInvalidate(
+      `/api/orders/transition/cancel/${orderId}`,
       { method: 'PATCH', body: JSON.stringify({ reason }) },
       invalidateOrdersCache,
     ),

@@ -18,6 +18,7 @@ export default function PlaceOrderScreen({ route, navigation }) {
   const [text, setText] = useState('');
   const [imageUri, setImageUri] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const isClosed = shop.storeInfo?.status && !shop.storeInfo.status.isOpen;
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -30,6 +31,10 @@ export default function PlaceOrderScreen({ route, navigation }) {
   };
 
   const submit = async () => {
+    if (isClosed) {
+      Alert.alert('Shop closed', shop.storeInfo?.status?.label || 'This shop is not accepting orders right now.');
+      return;
+    }
     if (!text.trim() && !imageUri) {
       Alert.alert('Error', 'Write your list or upload a photo');
       return;
@@ -50,6 +55,9 @@ export default function PlaceOrderScreen({ route, navigation }) {
     <ScreenLayout>
       <ScrollView style={styles.container} contentContainerStyle={{ padding: 16 }}>
       <Text style={styles.shopName}>{shop.name}</Text>
+      {isClosed ? (
+        <Text style={styles.closedBanner}>{shop.storeInfo.status.label}</Text>
+      ) : null}
       <Text style={styles.hint}>Write what you need — type, speak into the mic, or upload a photo.</Text>
 
       <OrderListTextInput
@@ -66,7 +74,7 @@ export default function PlaceOrderScreen({ route, navigation }) {
 
       {imageUri && <Image source={{ uri: imageUri }} style={styles.preview} />}
 
-      <TouchableOpacity style={styles.submitBtn} onPress={submit} disabled={submitting} testID="place-order-submit">
+      <TouchableOpacity style={styles.submitBtn} onPress={submit} disabled={submitting || isClosed} testID="place-order-submit">
         <Text style={styles.submitText}>{submitting ? 'Placing order...' : 'Place Order'}</Text>
       </TouchableOpacity>
       </ScrollView>
@@ -77,6 +85,7 @@ export default function PlaceOrderScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8faf9' },
   shopName: { fontSize: 22, fontWeight: '700', color: '#111' },
+  closedBanner: { fontSize: 14, color: '#b91c1c', fontWeight: '700', marginTop: 6 },
   hint: { fontSize: 14, color: '#666', marginVertical: 12 },
   uploadBtn: {
     borderWidth: 1,

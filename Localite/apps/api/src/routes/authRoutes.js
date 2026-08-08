@@ -416,6 +416,47 @@ router.post('/set-password', authenticate, async (req, res, next) => {
   }
 });
 
+router.post('/forgot-password/send-otp', authLimiter, otpLimiter, async (req, res, next) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ error: 'phone is required' });
+
+    const normalizedPhone = normalizePhone(phone);
+    const user = await User.findOne({ where: { phone: normalizedPhone } });
+    if (!user) {
+      return res.status(404).json({ error: 'No account found with this phone number' });
+    }
+    assertAccountCanLogin(user);
+
+    const result = await createOtpSession(normalizedPhone, 'sms', 'password_reset');
+    res.json({ message: 'Reset code sent to your phone', ...result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/forgot-password/reset', authLimiter, async (req, res, next) => {
+  try {
+    const { phone, otp, password } = req.body;
+    if (!phone || !otp || !password) {
+      return res.status(400).json({ error: 'phone, otp, and password are required' });
+    }
+
+    const normalizedPhone = normalizePhone(phone);
+    await verifyOtpSession(normalizedPhone, otp, 'sms', 'password_reset');
+    validatePassword(password);
+
+    const user = await User.findOne({ where: { phone: normalizedPhone } });
+    if (!user) return res.status(404).json({ error: 'Account not found' });
+    assertAccountCanLogin(user);
+
+    await user.update({ passwordHash: await hashPassword(password) });
+    res.json({ message: 'Password reset successful. You can log in with your new password.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─── Push notification device registration ────────────────────────
 
 router.post('/device/register', authenticate, async (req, res, next) => {

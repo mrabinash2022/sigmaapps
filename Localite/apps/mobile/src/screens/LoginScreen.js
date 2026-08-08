@@ -48,6 +48,11 @@ export default function LoginScreen() {
   const [maskedEmail, setMaskedEmail] = useState('');
   const [devAccountsOpen, setDevAccountsOpen] = useState(false);
   const [shopOwnersOpen, setShopOwnersOpen] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotPhone, setForgotPhone] = useState('');
+  const [forgotOtp, setForgotOtp] = useState('');
+  const [forgotPassword, setForgotPassword] = useState('');
+  const [forgotSent, setForgotSent] = useState(false);
 
   const applyDemoAccount = (account) => {
     setMode('password');
@@ -104,6 +109,45 @@ export default function LoginScreen() {
       await loginPassword(identifier.trim(), password);
     } catch (err) {
       Alert.alert('Login failed', err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotSendOtp = async () => {
+    if (!forgotPhone.trim()) {
+      Alert.alert('Error', 'Enter your registered phone number');
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.forgotPasswordSendOtp(forgotPhone.trim());
+      setForgotSent(true);
+      Alert.alert('Code sent', 'Enter the OTP sent to your phone and choose a new password.');
+    } catch (err) {
+      Alert.alert('Error', err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotReset = async () => {
+    if (!forgotPhone.trim() || !forgotOtp.trim() || !forgotPassword) {
+      Alert.alert('Error', 'Phone, OTP, and new password are required');
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.forgotPasswordReset(forgotPhone.trim(), forgotOtp.trim(), forgotPassword);
+      Alert.alert('Password reset', 'You can now log in with your new password.');
+      setShowForgot(false);
+      setForgotSent(false);
+      setForgotOtp('');
+      setForgotPassword('');
+      setIdentifier(forgotPhone.trim());
+      setPassword(forgotPassword);
+    } catch (err) {
+      Alert.alert('Error', err.message);
     } finally {
       setLoading(false);
     }
@@ -369,7 +413,54 @@ export default function LoginScreen() {
             </>
           )}
 
-          {!isRegister && (
+          {!isRegister && !showForgot && (
+            <TouchableOpacity onPress={() => setShowForgot(true)}>
+              <Text style={styles.link}>Forgot password?</Text>
+            </TouchableOpacity>
+          )}
+
+          {!isRegister && showForgot && (
+            <View style={styles.verifyBox}>
+              <Text style={styles.verifyTitle}>Reset password</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Registered phone number"
+                value={forgotPhone}
+                onChangeText={setForgotPhone}
+                keyboardType="phone-pad"
+              />
+              {!forgotSent ? (
+                <TouchableOpacity style={styles.secondaryBtn} onPress={handleForgotSendOtp} disabled={loading}>
+                  <Text style={styles.secondaryBtnText}>Send reset code</Text>
+                </TouchableOpacity>
+              ) : (
+                <>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="OTP from SMS"
+                    value={forgotOtp}
+                    onChangeText={setForgotOtp}
+                    keyboardType="number-pad"
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="New password"
+                    value={forgotPassword}
+                    onChangeText={setForgotPassword}
+                    secureTextEntry
+                  />
+                  <TouchableOpacity style={styles.verifyBtn} onPress={handleForgotReset} disabled={loading}>
+                    <Text style={styles.btnText}>Reset password</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+              <TouchableOpacity onPress={() => { setShowForgot(false); setForgotSent(false); }}>
+                <Text style={styles.link}>Back to login</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {!isRegister && !showForgot && (
             <TouchableOpacity style={styles.btn} onPress={handlePasswordLogin} disabled={loading} testID="login-submit">
               {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Login</Text>}
             </TouchableOpacity>

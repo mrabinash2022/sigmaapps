@@ -95,6 +95,16 @@ const Order = sequelize.define('Order', {
     allowNull: true,
     field: 'fulfillment_payload',
   },
+  cancellationReason: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    field: 'cancellation_reason',
+  },
+  cancelledAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'cancelled_at',
+  },
 });
 
 export default Order;

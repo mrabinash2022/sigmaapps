@@ -1,5 +1,5 @@
 import { OrderStatus } from './enums.js';
-import { getOrderItemsList, parseCatalogPayload } from './catalogUtils.js';
+import { getOrderItemsList, parseCatalogPayload, getCatalogEstimatedTotal } from './catalogUtils.js';
 
 export const FulfillmentLineStatus = {
   FULFILLED: 'fulfilled',
@@ -145,4 +145,87 @@ export function formatFulfillmentSummary(order) {
   const payload = parseFulfillmentPayload(order);
   if (!payload?.unavailableSummary?.length) return null;
   return payload.unavailableSummary.join(', ');
+}
+
+/** Merge original order lines with shopkeeper fulfillment adjustments for display. */
+export function getOrderDisplayItems(order) {
+  const entries = getOrderItemsList(order).filter((e) => e.kind !== 'note');
+  const payload = parseFulfillmentPayload(order);
+
+  if (!payload?.lines?.length) {
+    return entries.map((entry) => ({
+      ...entry,
+      quantityRequested: entry.kind === 'catalog' ? entry.quantity : 1,
+      quantityFulfilled: entry.kind === 'catalog' ? entry.quantity : 1,
+      isUnavailable: false,
+      isPartial: false,
+      displayStatus: FulfillmentLineStatus.FULFILLED,
+      unavailableReason: null,
+      originalLineTotal: entry.lineTotal,
+    }));
+  }
+
+  const lineByKey = Object.fromEntries(payload.lines.map((line) => [line.key, line]));
+
+  return entries.map((entry) => {
+    const line = lineByKey[entry.key];
+    if (!line) {
+      return {
+        ...entry,
+        quantityRequested: entry.kind === 'catalog' ? entry.quantity : 1,
+        quantityFulfilled: entry.kind === 'catalog' ? entry.quantity : 1,
+        isUnavailable: false,
+        isPartial: false,
+        displayStatus: FulfillmentLineStatus.FULFILLED,
+        unavailableReason: null,
+        originalLineTotal: entry.lineTotal,
+      };
+    }
+
+    const isUnavailable = line.status === FulfillmentLineStatus.UNAVAILABLE;
+    const isPartial = line.status === FulfillmentLineStatus.PARTIAL;
+    const quantityFulfilled = line.quantityFulfilled ?? 0;
+    const quantityRequested = line.quantityRequested
+      ?? (entry.kind === 'catalog' ? entry.quantity : 1);
+
+    return {
+      ...entry,
+      name: line.name || entry.name || entry.text,
+      quantityRequested,
+      quantityFulfilled,
+      isUnavailable,
+      isPartial,
+      displayStatus: line.status,
+      unavailableReason: line.unavailableReason,
+      originalLineTotal: entry.lineTotal,
+      lineTotal: entry.kind === 'catalog'
+        ? Number(line.unitPrice || entry.unitPrice || 0) * quantityFulfilled
+        : entry.lineTotal,
+    };
+  });
+}
+
+export function getOrderDisplayTotals(order) {
+  const payload = parseFulfillmentPayload(order);
+  const catalog = parseCatalogPayload(order);
+  const originalEstimate = getCatalogEstimatedTotal(catalog);
+
+  if (payload?.lines?.length) {
+    const fulfilledSubtotal = payload.catalogSubtotal != null
+      ? Number(payload.catalogSubtotal)
+      : computeCatalogFulfillmentTotal(payload.lines);
+    return {
+      originalEstimate,
+      fulfilledSubtotal: Number.isFinite(fulfilledSubtotal) ? fulfilledSubtotal : null,
+      finalBillAmount: order?.finalBillAmount != null ? Number(order.finalBillAmount) : null,
+      hasAdjustments: (payload.unavailableCount || 0) > 0,
+    };
+  }
+
+  return {
+    originalEstimate,
+    fulfilledSubtotal: originalEstimate,
+    finalBillAmount: order?.finalBillAmount != null ? Number(order.finalBillAmount) : null,
+    hasAdjustments: false,
+  };
 }

@@ -62,6 +62,7 @@ export default function CatalogOrderScreen({ route, navigation }) {
   const productCount = allItems.length;
   const hasExtras = Boolean(extraText.trim() || imageUri);
   const canSubmit = cartCount > 0 || hasExtras;
+  const isClosed = shop.storeInfo?.status && !shop.storeInfo.status.isOpen;
 
   const addItem = (itemId) => {
     setCart((prev) => ({ ...prev, [itemId]: (prev[itemId] || 0) + 1 }));
@@ -76,6 +77,10 @@ export default function CatalogOrderScreen({ route, navigation }) {
   };
 
   const submit = async () => {
+    if (isClosed) {
+      Alert.alert('Shop closed', shop.storeInfo?.status?.label || 'This shop is not accepting orders right now.');
+      return;
+    }
     if (!canSubmit) {
       Alert.alert('Add items', 'Select products, type a list, or upload a photo to place your order.');
       return;
@@ -117,6 +122,9 @@ export default function CatalogOrderScreen({ route, navigation }) {
         <View style={[styles.hero, { backgroundColor: theme.light }]}>
           <Text style={styles.shopName}>{shop.name}</Text>
           <Text style={[styles.heroSub, { color: theme.accent }]}>{theme.label}</Text>
+          {isClosed ? (
+            <Text style={styles.closedBanner}>{shop.storeInfo.status.label}</Text>
+          ) : null}
           {productCount > 0 ? (
             <Text style={styles.itemCount}>{productCount} products with prices</Text>
           ) : null}
@@ -165,7 +173,7 @@ export default function CatalogOrderScreen({ route, navigation }) {
             <TouchableOpacity
               style={[styles.placeBtn, { backgroundColor: theme.accent }]}
               onPress={submit}
-              disabled={submitting}
+              disabled={submitting || isClosed}
             >
               <Text style={styles.placeBtnText}>{submitting ? 'Placing…' : 'Place order'}</Text>
             </TouchableOpacity>
@@ -180,6 +188,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8faf9' },
   hero: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#eee' },
   shopName: { fontSize: 22, fontWeight: '800', color: '#111' },
+  closedBanner: { fontSize: 13, color: '#b91c1c', fontWeight: '700', marginTop: 6 },
   heroSub: { fontSize: 14, fontWeight: '600', marginTop: 4 },
   itemCount: { fontSize: 12, color: '#666', marginTop: 6, fontWeight: '600' },
   cartBar: {

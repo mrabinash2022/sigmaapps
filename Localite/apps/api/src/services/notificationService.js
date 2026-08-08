@@ -99,6 +99,13 @@ export async function notifyOrderUpdate(order, event) {
       },
       admin: null,
     },
+    Cancelled: {
+      customer: null,
+      admin: {
+        title: 'Order cancelled',
+        body: `${order.customer?.name} cancelled their order.${order.cancellationReason ? ` Reason: ${order.cancellationReason}` : ''}`,
+      },
+    },
     Returned: {
       customer: {
         title: 'Return recorded',
@@ -126,13 +133,19 @@ export async function notifyOrderUpdate(order, event) {
 
   const cfg = messages[event] || {};
   if (cfg.customer && order.customerId) {
-    await sendPushToUser(order.customerId, cfg.customer);
+    await sendPushToUser(order.customerId, {
+      ...cfg.customer,
+      data: { orderId: order.id, screen: 'OrderDetail' },
+    });
   }
   if (cfg.admin && order.shop) {
     const { ShopUser } = await import('../models/index.js');
     const staff = await ShopUser.findAll({ where: { shopId: order.shopId || order.shop.id } });
     for (const s of staff) {
-      await sendPushToUser(s.userId, cfg.admin);
+      await sendPushToUser(s.userId, {
+        ...cfg.admin,
+        data: { orderId: order.id, screen: 'ManageOrder' },
+      });
     }
   }
 }

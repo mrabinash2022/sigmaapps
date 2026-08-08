@@ -25,6 +25,8 @@ import { useTheme } from '../../context/ThemeContext';
 import ScreenLayout from '../../components/ScreenLayout';
 import { OrderSupportButton } from '../../components/OrderSupportButton';
 
+import { useOrdersListPolling } from '../../hooks/useOrderPolling';
+
 const STATUS_COLORS = {
   [OrderStatus.CREATED]: '#f59e0b',
   [OrderStatus.ACCEPTED]: '#3b82f6',
@@ -32,6 +34,7 @@ const STATUS_COLORS = {
   [OrderStatus.DELIVERED]: '#22c55e',
   [OrderStatus.REJECTED]: '#ef4444',
   [OrderStatus.RETURNED]: '#dc2626',
+  [OrderStatus.CANCELLED]: '#6b7280',
 };
 
 const RETURN_REASONS = [
@@ -74,15 +77,16 @@ export default function MyOrdersScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [payingId, setPayingId] = useState(null);
 
-  const load = (force = false) => {
-    setLoading(true);
+  const load = useCallback((force = false) => {
+    if (!force) setLoading(true);
     api.getMyOrders({ force })
       .then(({ orders: o }) => setOrders(o || []))
-      .catch((err) => Alert.alert('Error', err.message || 'Could not load orders'))
-      .finally(() => setLoading(false));
-  };
+      .catch((err) => { if (!force) Alert.alert('Error', err.message || 'Could not load orders'); })
+      .finally(() => { if (!force) setLoading(false); });
+  }, []);
 
-  useFocusEffect(useCallback(() => { load(); }, []));
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useOrdersListPolling(orders, () => load(true));
 
   const updateOrderInList = (updated) => {
     setOrders((prev) => prev.map((o) => (o.id === updated.id ? { ...o, ...updated } : o)));

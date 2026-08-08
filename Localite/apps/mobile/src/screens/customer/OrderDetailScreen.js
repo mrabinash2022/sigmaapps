@@ -18,11 +18,20 @@ import {
   canReorderOrder,
   isDeliveredOrder,
   getOrderStatus,
+  canCustomerCancelOrder,
 } from '@localite/shared';
 import ScreenLayout from '../../components/ScreenLayout';
 import { OrderSupportButton } from '../../components/OrderSupportButton';
 import CatalogOrderItems from '../../components/CatalogOrderItems';
 import FulfillmentSummary from '../../components/FulfillmentSummary';
+import { useOrderPolling } from '../../hooks/useOrderPolling';
+
+const CANCEL_REASONS = [
+  'Ordered by mistake',
+  'Found items elsewhere',
+  'Taking too long',
+  'Changed my mind',
+];
 
 const RETURN_REASONS = [
   'Wrong items received',
@@ -39,15 +48,16 @@ export default function OrderDetailScreen({ route, navigation }) {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const load = () => {
-    setLoading(true);
-    api.getOrder(orderId)
+  const load = useCallback(({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
+    api.getOrder(orderId, { force: silent })
       .then(({ order: o }) => setOrder(o))
       .catch(console.error)
-      .finally(() => setLoading(false));
-  };
+      .finally(() => { if (!silent) setLoading(false); });
+  }, [orderId]);
 
-  useFocusEffect(useCallback(() => { load(); }, [orderId]));
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useOrderPolling(order, load);
 
   const selectPayment = async (method) => {
     try {
@@ -133,6 +143,43 @@ export default function OrderDetailScreen({ route, navigation }) {
     );
   };
 
+  const confirmCancel = (reason) => {
+    Alert.alert(
+      'Cancel order?',
+      'The shop will be notified that you no longer need this order.',
+      [
+        { text: 'Keep order', style: 'cancel' },
+        {
+          text: 'Cancel order',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { order: updated } = await api.cancelOrder(orderId, reason);
+              setOrder(updated);
+              Alert.alert('Order cancelled', 'Your order has been cancelled.');
+            } catch (err) {
+              Alert.alert('Error', err.message);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const requestCancel = () => {
+    Alert.alert(
+      'Cancel order',
+      'Why are you cancelling?',
+      [
+        ...CANCEL_REASONS.map((reason) => ({
+          text: reason,
+          onPress: () => confirmCancel(reason),
+        })),
+        { text: 'Close', style: 'cancel' },
+      ],
+    );
+  };
+
   if (loading || !order) {
     return (
       <ScreenLayout>
@@ -143,9 +190,11 @@ export default function OrderDetailScreen({ route, navigation }) {
 
   const orderStatus = getOrderStatus(order);
   const isRejected = orderStatus === OrderStatus.REJECTED;
+  const isCancelled = orderStatus === OrderStatus.CANCELLED;
   const isReturned = orderStatus === OrderStatus.RETURNED;
   const isBackorderWaiting = orderStatus === OrderStatus.BACKORDER_WAITING;
-  const currentIdx = (isRejected || isReturned || isBackorderWaiting) ? -1 : STEPS.indexOf(orderStatus);
+  const currentIdx = (isRejected || isReturned || isBackorderWaiting || isCancelled) ? -1 : STEPS.indexOf(orderStatus);
+  const showCancel = canCustomerCancelOrder(order);
 
   return (
     <ScreenLayout>
@@ -165,6 +214,13 @@ export default function OrderDetailScreen({ route, navigation }) {
             <Text style={styles.rejectedTitle}>Order rejected by shop</Text>
             <Text style={styles.rejectedBody}>
               {order.rejectionReason || 'The shop could not accept your order. You may place a new order or contact support.'}
+            </Text>
+          </View>
+        ) : isCancelled ? (
+          <View style={styles.rejectedBanner}>
+            <Text style={styles.rejectedTitle}>Order cancelled</Text>
+            <Text style={styles.rejectedBody}>
+              {order.cancellationReason || 'You cancelled this order.'}
             </Text>
           </View>
         ) : isReturned ? (
@@ -234,6 +290,12 @@ export default function OrderDetailScreen({ route, navigation }) {
               <Text style={styles.body}>Transaction: {order.razorpayPaymentId}</Text>
             )}
           </View>
+        )}
+
+        {showCancel && (
+          <TouchableOpacity style={[styles.btn, styles.btnDangerOutline]} onPress={requestCancel}>
+            <Text style={styles.btnDangerText}>Cancel order</Text>
+          </TouchableOpacity>
         )}
 
         {order.orderStatus === OrderStatus.ACCEPTED && !order.paymentMethod && (
@@ -314,6 +376,8 @@ const styles = StyleSheet.create({
   btnText: { color: '#fff', fontWeight: '700' },
   btnOutline: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#1a7f4b' },
   btnOutlineText: { color: '#1a7f4b' },
+  btnDangerOutline: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#ef4444', marginBottom: 16 },
+  btnDangerText: { color: '#ef4444', fontWeight: '700' },
   event: { fontSize: 12, color: '#666', marginBottom: 4 },
   statusRejected: { color: '#ef4444', fontWeight: '600' },
   rejectedBanner: {

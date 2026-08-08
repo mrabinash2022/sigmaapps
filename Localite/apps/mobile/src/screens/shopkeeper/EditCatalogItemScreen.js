@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { getCatalogGroups } from '@localite/shared';
@@ -30,6 +31,10 @@ export default function EditCatalogItemScreen({ route, navigation }) {
   const [itemGroup, setItemGroup] = useState(item?.itemGroup || groups[0]?.key || 'general');
   const [imageUri, setImageUri] = useState(item?.imageUrl || null);
   const [newImageUri, setNewImageUri] = useState(null);
+  const [trackStock, setTrackStock] = useState(Boolean(item?.trackStock));
+  const [stockQuantity, setStockQuantity] = useState(
+    item?.stockQuantity != null ? String(item.stockQuantity) : '',
+  );
   const [saving, setSaving] = useState(false);
 
   const pickImage = async () => {
@@ -50,6 +55,8 @@ export default function EditCatalogItemScreen({ route, navigation }) {
     sizeLabel: sizeLabel.trim(),
     unit: unit.trim() || 'piece',
     itemGroup,
+    trackStock,
+    stockQuantity: trackStock ? stockQuantity : '',
     publish,
   });
 
@@ -143,6 +150,26 @@ export default function EditCatalogItemScreen({ route, navigation }) {
           ) : null}
         </View>
 
+        <View style={styles.stockRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.label}>Track stock quantity</Text>
+            <Text style={styles.stockHint}>When enabled, out-of-stock items are hidden from customers</Text>
+          </View>
+          <Switch value={trackStock} onValueChange={setTrackStock} trackColor={{ true: '#1a7f4b' }} />
+        </View>
+        {trackStock ? (
+          <>
+            <Text style={styles.label}>Stock quantity</Text>
+            <TextInput
+              style={styles.input}
+              value={stockQuantity}
+              onChangeText={setStockQuantity}
+              keyboardType="number-pad"
+              placeholder="e.g. 10"
+            />
+          </>
+        ) : null}
+
         <TouchableOpacity
           style={[styles.btn, styles.btnDraft]}
           onPress={() => save(false)}
@@ -192,6 +219,8 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: '#1a7f4b', borderColor: '#1a7f4b' },
   chipText: { fontSize: 13, fontWeight: '600', color: '#555' },
   chipTextActive: { color: '#fff' },
+  stockRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8, marginBottom: 4 },
+  stockHint: { fontSize: 12, color: '#888', marginTop: 2 },
   btn: { padding: 16, borderRadius: 10, alignItems: 'center', marginTop: 12 },
   btnDraft: { borderWidth: 1, borderColor: '#1a7f4b', backgroundColor: '#fff' },
   btnDraftText: { color: '#1a7f4b', fontWeight: '800', fontSize: 15 },

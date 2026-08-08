@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { ActivityIndicator, Pressable, Text, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import * as Notifications from 'expo-notifications';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { UserRole } from '@localite/shared';
@@ -17,9 +18,11 @@ import ShopListScreen from './src/screens/customer/ShopListScreen';
 import CatalogOrderScreen from './src/screens/customer/CatalogOrderScreen';
 import PlaceOrderScreen from './src/screens/customer/PlaceOrderScreen';
 import MyOrdersScreen from './src/screens/customer/MyOrdersScreen';
+import MyTicketsScreen from './src/screens/customer/MyTicketsScreen';
 import OrderDetailScreen from './src/screens/customer/OrderDetailScreen';
 import ReorderConfirmScreen from './src/screens/customer/ReorderConfirmScreen';
 import ShopInboxScreen from './src/screens/shopkeeper/ShopInboxScreen';
+import SupportInboxScreen from './src/screens/shopkeeper/SupportInboxScreen';
 import CompleteInvitationScreen from './src/screens/shopkeeper/CompleteInvitationScreen';
 import ManageOrderScreen from './src/screens/shopkeeper/ManageOrderScreen';
 import ManageCatalogScreen from './src/screens/shopkeeper/ManageCatalogScreen';
@@ -41,6 +44,14 @@ import {
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+const navigationRef = React.createRef();
+
+function navigateFromNotification(data) {
+  const orderId = data?.orderId;
+  const screen = data?.screen || 'OrderDetail';
+  if (!orderId || !navigationRef.current?.isReady?.()) return;
+  navigationRef.current.navigate(screen, { orderId });
+}
 
 function useHeaderOptions() {
   const { colors } = useTheme();
@@ -89,8 +100,28 @@ function AppShell() {
   const navigationTheme = React.useMemo(() => getNavigationTheme(colors), [colors]);
   const showLightStatusBar = Boolean(user);
 
+  React.useEffect(() => {
+    if (!user) return undefined;
+
+    const handleResponse = (response) => {
+      const data = response?.notification?.request?.content?.data;
+      if (data?.orderId) navigateFromNotification(data);
+    };
+
+    Notifications.getLastNotificationResponseAsync()
+      .then((response) => { if (response) handleResponse(response); })
+      .catch(() => {});
+
+    const subscription = Notifications.addNotificationResponseReceivedListener(handleResponse);
+    return () => subscription.remove();
+  }, [user?.id]);
+
   return (
-    <NavigationContainer key={`${user?.id ?? 'guest'}-${colors.accent}`} theme={navigationTheme}>
+    <NavigationContainer
+      ref={navigationRef}
+      key={`${user?.id ?? 'guest'}-${colors.accent}`}
+      theme={navigationTheme}
+    >
       <StatusBar style={showLightStatusBar ? 'light' : (colors.mode === 'dark' ? 'light' : 'dark')} />
       <AppNavigator />
     </NavigationContainer>
@@ -159,6 +190,7 @@ function CustomerStack() {
       <Stack.Screen name="CatalogOrder" component={CatalogOrderScreen} options={{ title: 'Browse & Order' }} />
       <Stack.Screen name="PlaceOrder" component={PlaceOrderScreen} options={{ title: 'Place Order' }} />
       <Stack.Screen name="OrderDetail" component={OrderDetailScreen} options={{ title: 'Order' }} />
+      <Stack.Screen name="MyTickets" component={MyTicketsScreen} options={{ title: 'Support tickets' }} />
       <Stack.Screen name="ReorderConfirm" component={ReorderConfirmScreen} options={{ title: 'Reorder' }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
       <Stack.Screen name="ProfileOrders" component={ProfileOrdersScreen} options={{ title: 'Order History' }} />
@@ -218,6 +250,17 @@ function AdminTabs() {
           colors,
         })}
       />
+      <Tab.Screen
+        name="Support"
+        component={SupportInboxScreen}
+        options={buildTabOptions({
+          label: 'Support',
+          title: 'Support',
+          iconActive: 'chatbubbles',
+          iconInactive: 'chatbubbles-outline',
+          colors,
+        })}
+      />
     </Tab.Navigator>
   );
 }
@@ -229,6 +272,7 @@ function AdminStack() {
       <Stack.Screen name="Home" component={AdminTabs} options={{ headerShown: false }} />
       <Stack.Screen name="CompleteInvitation" component={CompleteInvitationScreen} options={{ title: 'Register Shop' }} />
       <Stack.Screen name="ManageOrder" component={ManageOrderScreen} options={{ title: 'Manage Order' }} />
+      <Stack.Screen name="SupportInbox" component={SupportInboxScreen} options={{ title: 'Support inbox' }} />
       <Stack.Screen name="EditCatalogItem" component={EditCatalogItemScreen} options={{ title: 'Product' }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Shop Profile' }} />
       <Stack.Screen name="ProfileOrders" component={ProfileOrdersScreen} options={{ title: 'Orders Served' }} />

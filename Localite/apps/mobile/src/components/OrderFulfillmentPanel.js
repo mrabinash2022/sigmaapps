@@ -54,14 +54,19 @@ function LineRow({ line, onChange }) {
 
   return (
     <View style={[styles.lineCard, (isUnavailable || isPartial) && styles.lineCardWarn]}>
+      {isUnavailable && (
+        <View style={styles.removedBanner}>
+          <Text style={styles.removedBannerText}>✕ Not available — removed from bill</Text>
+        </View>
+      )}
       <View style={styles.lineHeader}>
         <Text style={styles.lineName}>{line.name}</Text>
         <TouchableOpacity
           style={[styles.availBtn, isUnavailable && styles.availBtnOff]}
           onPress={toggleUnavailable}
         >
-          <Text style={styles.availBtnText}>
-            {isUnavailable ? 'Unavailable' : 'Available'}
+          <Text style={[styles.availBtnText, isUnavailable && styles.availBtnTextOff]}>
+            {isUnavailable ? 'Restore' : 'Remove'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -154,9 +159,9 @@ export default function OrderFulfillmentPanel({ order, onChange }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Item availability</Text>
+      <Text style={styles.title}>Remove unavailable items</Text>
       <Text style={styles.hint}>
-        Mark items that are not available. The bill will reflect only fulfilled items.
+        Tap Remove on items you cannot fulfill. The customer will see them crossed out and the bill will reflect only available items.
       </Text>
 
       {lines.map((line, index) => (
@@ -215,7 +220,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#eee',
   },
-  lineCardWarn: { borderColor: '#fcd34d', backgroundColor: '#fffbeb' },
+  lineCardWarn: { borderColor: '#fecaca', backgroundColor: '#fef2f2' },
+  removedBanner: {
+    backgroundColor: '#fee2e2',
+    borderRadius: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    marginBottom: 8,
+  },
+  removedBannerText: { fontSize: 11, fontWeight: '700', color: '#b91c1c' },
   lineHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   lineName: { flex: 1, fontSize: 14, fontWeight: '600', color: '#333' },
   availBtn: {
@@ -224,8 +237,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 8,
   },
-  availBtnOff: { backgroundColor: '#fef2f2' },
+  availBtnOff: { backgroundColor: '#fee2e2', borderWidth: 1, borderColor: '#fecaca' },
   availBtnText: { fontSize: 11, fontWeight: '700', color: '#1a7f4b' },
+  availBtnTextOff: { color: '#b91c1c' },
   qtyRow: { flexDirection: 'row', alignItems: 'center', marginTop: 10, justifyContent: 'space-between' },
   qtyLabel: { fontSize: 12, color: '#666' },
   qtyControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },

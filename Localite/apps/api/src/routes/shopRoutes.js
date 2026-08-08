@@ -21,11 +21,11 @@ router.use(shopHomeManageRoutes);
 
 router.get('/area/:areaId', async (req, res, next) => {
   try {
-    const { category } = req.query;
+    const { category, q } = req.query;
     const { page, limit, offset } = parsePagination(req);
     const listKey = cacheKey(
       'shops', 'area', req.params.areaId,
-      category || 'all', String(page), String(limit),
+      category || 'all', q || '', String(page), String(limit),
     );
 
     const payload = await getCached(listKey, CacheTTL.SHOPS_BY_AREA_MS, async () => {
@@ -36,6 +36,9 @@ router.get('/area/:areaId', async (req, res, next) => {
         isVerified: true,
       };
       if (category) where.category = category;
+      if (q?.trim()) {
+        where.name = { [Op.iLike]: `%${q.trim()}%` };
+      }
 
       const { rows, count } = await Shop.findAndCountAll({
         where,

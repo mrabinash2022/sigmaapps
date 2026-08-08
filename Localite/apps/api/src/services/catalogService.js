@@ -3,6 +3,52 @@ import { CatalogPublishStatus, getCatalogGroups, isVisualCatalogShop } from '@lo
 import { buildVisualOrderPayload } from '@localite/shared';
 import { invalidateShopCatalogCache } from './cacheService.js';
 
+export function isCatalogItemInStock(item) {
+  if (!item?.isAvailable) return false;
+  if (item.trackStock && item.stockQuantity != null && Number(item.stockQuantity) <= 0) {
+    return false;
+  }
+  return true;
+}
+
+export function assertCatalogStock(dbItem, requestedQty) {
+  if (!isCatalogItemInStock(dbItem)) {
+    const err = new Error(`${dbItem.name} is out of stock`);
+    err.statusCode = 400;
+    throw err;
+  }
+  if (dbItem.trackStock && dbItem.stockQuantity != null && requestedQty > Number(dbItem.stockQuantity)) {
+    const err = new Error(`Only ${dbItem.stockQuantity} of ${dbItem.name} available`);
+    err.statusCode = 400;
+    throw err;
+  }
+}
+
+export async function applyFulfillmentStockAdjustments(fulfillmentLines) {
+  for (const line of fulfillmentLines || []) {
+    if (line.kind !== 'catalog' || !line.catalogItemId) continue;
+
+    const item = await ShopCatalogItem.findByPk(line.catalogItemId);
+    if (!item) continue;
+
+    const fulfilled = Number(line.quantityFulfilled || 0);
+    const updates = {};
+
+    if (item.trackStock && item.stockQuantity != null) {
+      const nextQty = Math.max(0, Number(item.stockQuantity) - fulfilled);
+      updates.stockQuantity = nextQty;
+      if (nextQty <= 0) updates.isAvailable = false;
+    } else if (line.status === 'unavailable') {
+      updates.isAvailable = false;
+    }
+
+    if (Object.keys(updates).length) {
+      await item.update(updates);
+      invalidateShopCatalogCache(item.shopId);
+    }
+  }
+}
+
 const PUBLIC_CATALOG_WHERE = {
   isAvailable: true,
   publishStatus: CatalogPublishStatus.PUBLISHED,
@@ -29,7 +75,7 @@ export async function getShopCatalog(shop) {
   const items = await ShopCatalogItem.findAll({
     where: { shopId: shop.id, ...PUBLIC_CATALOG_WHERE },
     order: [['sortOrder', 'ASC'], ['name', 'ASC']],
-  });
+  }).then((rows) => rows.filter(isCatalogItemInStock));
 
   if (!items.length && !(await shopSupportsVisualCatalog(shop))) {
     return { groups: [], items: [] };
@@ -109,6 +155,10 @@ function parseCatalogItemBody(body) {
     sizeLabel: body.sizeLabel?.trim() || null,
     unit: body.unit?.trim() || 'piece',
     sortOrder: Number(body.sortOrder) || 0,
+    trackStock: body.trackStock === 'true' || body.trackStock === true,
+    stockQuantity: (body.trackStock === 'true' || body.trackStock === true)
+      ? Math.max(0, Number(body.stockQuantity) || 0)
+      : null,
   };
 }
 
@@ -191,6 +241,7 @@ export async function buildCatalogOrderPayload(shopId, cartItems) {
       err.statusCode = 400;
       throw err;
     }
+    assertCatalogStock(dbItem, cartItem.quantity);
     return {
       catalogItemId: dbItem.id,
       name: dbItem.name,

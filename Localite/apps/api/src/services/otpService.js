@@ -50,7 +50,9 @@ export async function createOtpSession(target, channel = 'sms', purpose = 'login
   } else {
     const subject = purpose === 'register'
       ? 'Verify your email for Localite registration'
-      : 'Your Localite security code';
+      : purpose === 'password_reset'
+        ? 'Your Localite password reset code'
+        : 'Your Localite security code';
     const text = `Your Localite verification code is ${otp}. It expires in ${OTP_TTL_MS / 60000} minutes. Do not share this code with anyone.`;
     await sendEmail(normalizedTarget, subject, text);
     if (process.env.NODE_ENV !== 'production') {

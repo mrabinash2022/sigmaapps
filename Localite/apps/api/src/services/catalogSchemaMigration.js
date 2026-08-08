@@ -75,6 +75,16 @@ export async function migrateCatalogSchema() {
   `);
 
   await sequelize.query(`
+    ALTER TABLE "ShopCatalogItems"
+    ADD COLUMN IF NOT EXISTS track_stock BOOLEAN NOT NULL DEFAULT FALSE;
+  `);
+
+  await sequelize.query(`
+    ALTER TABLE "ShopCatalogItems"
+    ADD COLUMN IF NOT EXISTS stock_quantity INTEGER;
+  `);
+
+  await sequelize.query(`
     UPDATE "ShopCatalogItems"
     SET publish_status = 'published'
     WHERE publish_status IS NULL;
