@@ -5,6 +5,7 @@ import logger, { logError } from './logging/logger.js';
 import { getStorageInfo } from './services/storageService.js';
 import { isRazorpayEnabled } from './services/razorpayService.js';
 import { startDeliveryReminderScheduler } from './services/deliveryReminderService.js';
+import { startBulkBuyScheduler } from './services/bulkBuySchedulerService.js';
 
 loadEnv();
 
@@ -24,6 +25,7 @@ async function start() {
   try {
     await bootstrapDatabase();
     startDeliveryReminderScheduler();
+    startBulkBuyScheduler();
 
     app.listen(PORT, () => {
       logger.info('Localite API started', {

@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import SuperAdminScreen from './SuperAdminScreen';
 import SuperAdminUsersScreen from './SuperAdminUsersScreen';
 import PlatformAnalyticsScreen from './PlatformAnalyticsScreen';
+import BulkBuySettingsScreen from './BulkBuySettingsScreen';
 import ScreenLayout from '../../components/ScreenLayout';
 import { useTheme } from '../../context/ThemeContext';
 import { createAdminStyles } from '../../theme/adminScreenStyles';
@@ -11,6 +12,7 @@ const MAIN_TABS = [
   { key: 'shops', label: 'Shops' },
   { key: 'users', label: 'Users' },
   { key: 'analytics', label: 'Analytics' },
+  { key: 'bulkbuy', label: 'Bulk Buy' },
 ];
 
 export default function SuperAdminDashboard() {
@@ -33,7 +35,10 @@ export default function SuperAdminDashboard() {
           ))}
         </View>
         <View style={styles.content}>
-          {tab === 'shops' ? <SuperAdminScreen /> : tab === 'users' ? <SuperAdminUsersScreen /> : <PlatformAnalyticsScreen />}
+          {tab === 'shops' ? <SuperAdminScreen />
+            : tab === 'users' ? <SuperAdminUsersScreen />
+              : tab === 'bulkbuy' ? <BulkBuySettingsScreen />
+                : <PlatformAnalyticsScreen />}
         </View>
       </View>
     </ScreenLayout>

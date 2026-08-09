@@ -145,4 +145,23 @@ export const BulkBuyParticipantStatus = {
   WITHDRAWN: 'withdrawn',
 };
 
+export const BulkBuyCommitmentStatus = {
+  ACCEPTED: 'accepted',
+  TOKEN_PENDING: 'token_pending',
+  TOKEN_PAID: 'token_paid',
+  VISIT_SCHEDULED: 'visit_scheduled',
+  COMPLETED: 'completed',
+  WITHDRAWN: 'withdrawn',
+};
+
+export const BulkBuyTokenPaymentStatus = {
+  NOT_REQUIRED: 'not_required',
+  PENDING: 'pending',
+  PAID: 'paid',
+  FAILED: 'failed',
+  REFUNDED: 'refunded',
+};
+
 export const DEFAULT_BULK_BUY_MIN_SUBSCRIBERS = 10;
+export const DEFAULT_BULK_BUY_COLLECTION_DAYS = 7;
+export const DEFAULT_BULK_BUY_AUTO_CLOSE_GRACE_DAYS = 3;

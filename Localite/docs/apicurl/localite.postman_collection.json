@@ -1997,6 +1997,30 @@
           }
         },
         {
+          "name": "Edit Campaign",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/bulk-buy/campaigns/{{campaignId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated bulk buy title\",\n  \"description\": \"Updated specs\",\n  \"minSubscribers\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
           "name": "Subscribe",
           "request": {
             "method": "POST",
@@ -2086,7 +2110,193 @@
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"shopId\": \"{{shopId}}\",\n  \"discountType\": \"percent\",\n  \"discountValue\": 12,\n  \"termsText\": \"Valid when all buyers purchase within 30 days\",\n  \"extras\": {\n    \"extendedWarrantyMonths\": 12,\n    \"installation\": true,\n    \"freebies\": \"Gift voucher\"\n  }\n}",
+              "raw": "{\n  \"shopId\": \"{{shopId}}\",\n  \"discountType\": \"percent\",\n  \"discountValue\": 12,\n  \"tokenAmount\": 99,\n  \"proposedDealDay\": \"2026-08-16\",\n  \"termsText\": \"Valid when buyers visit on confirmed deal day\",\n  \"extras\": {\n    \"extendedWarrantyMonths\": 12,\n    \"installation\": true,\n    \"freebies\": \"Gift voucher\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Accept Store Offer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/bulk-buy/campaigns/{{campaignId}}/offers/{{offerId}}/accept",
+            "description": ""
+          }
+        },
+        {
+          "name": "Mock Pay Token (dev)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/bulk-buy/campaigns/{{campaignId}}/commitment/mock-pay-token",
+            "description": ""
+          }
+        },
+        {
+          "name": "Create Token Order (Razorpay)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/bulk-buy/campaigns/{{campaignId}}/commitment/token-order",
+            "description": ""
+          }
+        },
+        {
+          "name": "Verify Token Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/bulk-buy/campaigns/{{campaignId}}/commitment/verify-token",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"razorpayOrderId\": \"order_test\",\n  \"razorpayPaymentId\": \"pay_test\",\n  \"razorpaySignature\": \"sig_test\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Withdraw Offer Commitment",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/bulk-buy/campaigns/{{campaignId}}/commitment",
+            "description": ""
+          }
+        },
+        {
+          "name": "Set Visit Poll",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/bulk-buy/campaigns/{{campaignId}}/visit-poll",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"visitPollDates\": [\n    \"2026-08-16\",\n    \"2026-08-23\",\n    \"2026-08-30\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Vote Visit Poll",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/bulk-buy/campaigns/{{campaignId}}/visit-poll/vote",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pollDate\": \"2026-08-16\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List Offer Commitments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/bulk-buy/campaigns/{{campaignId}}/offers/{{offerId}}/commitments",
+            "description": ""
+          }
+        },
+        {
+          "name": "Mark Commitment Complete",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/bulk-buy/campaigns/{{campaignId}}/commitments/{{participantId}}/complete",
+            "description": ""
+          }
+        },
+        {
+          "name": "Close Campaign",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/bulk-buy/campaigns/{{campaignId}}/close",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"deal_complete\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2358,6 +2568,45 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"bulkBuyEnabled\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Bulk Buy Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/bulk-buy-settings",
+            "description": ""
+          }
+        },
+        {
+          "name": "Update Bulk Buy Settings",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/bulk-buy-settings",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"collectionPeriodDays\": 7,\n  \"defaultMinSubscribers\": 10,\n  \"autoCloseGraceDaysAfterDealDay\": 3\n}",
               "options": {
                 "raw": {
                   "language": "json"

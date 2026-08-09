@@ -48,6 +48,22 @@ const BulkBuyStoreOffer = sequelize.define('BulkBuyStoreOffer', {
     allowNull: true,
     field: 'submitted_by_user_id',
   },
+  tokenAmount: {
+    type: DataTypes.DECIMAL(12, 2),
+    allowNull: false,
+    defaultValue: 0,
+    field: 'token_amount',
+  },
+  proposedDealDay: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+    field: 'proposed_deal_day',
+  },
+  confirmedDealDay: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+    field: 'confirmed_deal_day',
+  },
 }, {
   tableName: 'BulkBuyStoreOffers',
 });

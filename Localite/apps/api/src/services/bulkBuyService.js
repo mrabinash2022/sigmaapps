@@ -21,6 +21,12 @@ import {
   notifyBulkBuySubscribersThreshold,
   notifyBulkBuyStoresThreshold,
 } from './bulkBuyNotificationService.js';
+import { getBulkBuySettings } from './bulkBuySettingsService.js';
+import {
+  countOfferAcceptances,
+  getMyCommitment,
+  getPollVoteSummary,
+} from './bulkBuyCommitmentService.js';
 
 const ACTIVE_STATUSES = [
   BulkBuyCampaignStatus.COLLECTING,
@@ -34,18 +40,23 @@ export async function countSubscribers(campaignId) {
   });
 }
 
-function serializeOffer(offer) {
+async function serializeOffer(offer) {
   const json = offer.toJSON ? offer.toJSON() : offer;
+  const acceptanceCount = await countOfferAcceptances(json.id);
   return {
     id: json.id,
     campaignId: json.campaignId,
     shopId: json.shopId,
-    shop: json.shop ? { id: json.shop.id, name: json.shop.name, address: json.shop.address } : undefined,
+    shop: json.shop ? { id: json.shop.id, name: json.shop.name, address: json.shop.address, phone: json.shop.phone } : undefined,
     discountType: json.discountType,
     discountValue: json.discountValue != null ? Number(json.discountValue) : null,
     extras: json.extras || {},
     termsText: json.termsText,
     validUntil: json.validUntil,
+    tokenAmount: json.tokenAmount != null ? Number(json.tokenAmount) : 0,
+    proposedDealDay: json.proposedDealDay,
+    confirmedDealDay: json.confirmedDealDay,
+    acceptanceCount,
     createdAt: json.createdAt,
   };
 }
@@ -67,6 +78,15 @@ export async function serializeCampaign(campaign, { viewer = null } = {}) {
 
   const offerCount = json.offers?.length ?? await BulkBuyStoreOffer.count({ where: { campaignId: json.id } });
   const canEdit = viewer ? await canUserEditCampaign(viewer, campaign) : false;
+  const pollVoteSummary = await getPollVoteSummary(json.id);
+  const myCommitment = viewer?.id && viewer.role === UserRole.CUSTOMER
+    ? await getMyCommitment(json.id, viewer.id)
+    : null;
+
+  let offers;
+  if (json.offers) {
+    offers = await Promise.all(json.offers.map((o) => serializeOffer(o)));
+  }
 
   return {
     id: json.id,
@@ -89,10 +109,15 @@ export async function serializeCampaign(campaign, { viewer = null } = {}) {
     status: json.status,
     deadlineAt: json.deadlineAt,
     thresholdReachedAt: json.thresholdReachedAt,
+    visitPollDates: json.visitPollDates || [],
+    pollVoteSummary,
+    closedAt: json.closedAt,
+    closeReason: json.closeReason,
     isSubscribed,
     canEdit,
+    myCommitment,
     offerCount,
-    offers: json.offers ? json.offers.map(serializeOffer) : undefined,
+    offers,
     createdAt: json.createdAt,
   };
 }
@@ -166,11 +191,17 @@ export async function createCampaign(user, payload) {
     throw err;
   }
 
-  const min = Number(minSubscribers) || DEFAULT_BULK_BUY_MIN_SUBSCRIBERS;
+  const settings = await getBulkBuySettings();
+  const min = Number(minSubscribers) || settings.defaultMinSubscribers;
   if (min < 2) {
     const err = new Error('Minimum subscribers must be at least 2');
     err.statusCode = 400;
     throw err;
+  }
+
+  let resolvedDeadline = deadlineAt ? new Date(deadlineAt) : null;
+  if (!resolvedDeadline || Number.isNaN(resolvedDeadline.getTime())) {
+    resolvedDeadline = new Date(Date.now() + settings.collectionPeriodDays * 24 * 60 * 60 * 1000);
   }
 
   let createdByType;
@@ -220,7 +251,7 @@ export async function createCampaign(user, payload) {
     description: description?.trim() || null,
     brandPreference: brandPreference?.trim() || null,
     minSubscribers: min,
-    deadlineAt: deadlineAt || null,
+    deadlineAt: resolvedDeadline,
     status: BulkBuyCampaignStatus.COLLECTING,
   });
 
@@ -475,7 +506,21 @@ export async function submitStoreOffer(user, campaignId, shopId, payload) {
     extras = {},
     termsText,
     validUntil,
+    tokenAmount = 0,
+    proposedDealDay,
   } = payload;
+
+  const parsedToken = Number(tokenAmount);
+  if (!Number.isFinite(parsedToken) || parsedToken < 0) {
+    const err = new Error('tokenAmount must be 0 or more');
+    err.statusCode = 400;
+    throw err;
+  }
+  if (!proposedDealDay) {
+    const err = new Error('proposedDealDay is required');
+    err.statusCode = 400;
+    throw err;
+  }
 
   const offerPayload = {
     campaignId,
@@ -485,6 +530,8 @@ export async function submitStoreOffer(user, campaignId, shopId, payload) {
     extras,
     termsText: termsText?.trim() || null,
     validUntil: validUntil || null,
+    tokenAmount: parsedToken,
+    proposedDealDay,
     submittedByUserId: user.id,
   };
 
@@ -516,7 +563,7 @@ export async function listCampaignOffers(campaignId) {
     include: [{ association: 'shop', attributes: ['id', 'name', 'address', 'phone'] }],
     order: [['createdAt', 'ASC']],
   });
-  return offers.map(serializeOffer);
+  return Promise.all(offers.map((o) => serializeOffer(o)));
 }
 
 export async function getSubscriberUserIds(campaignId) {

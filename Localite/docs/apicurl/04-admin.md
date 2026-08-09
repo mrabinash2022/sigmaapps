@@ -143,6 +143,34 @@ curl -s "$BASE_URL/api/auth/me" \
 
 ---
 
+## Bulk buy platform settings
+
+Super admin defaults for collection window, minimum group size, and auto-close grace after visit day.
+
+```bash
+curl -s "$BASE_URL/api/admin/bulk-buy-settings" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+
+curl -s -X PATCH "$BASE_URL/api/admin/bulk-buy-settings" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "collectionPeriodDays": 7,
+    "defaultMinSubscribers": 10,
+    "autoCloseGraceDaysAfterDealDay": 3
+  }' | jq .
+```
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `collectionPeriodDays` | 7 | Auto-expire `collecting` campaigns if min interest not met |
+| `defaultMinSubscribers` | 10 | Default threshold when creating campaigns |
+| `autoCloseGraceDaysAfterDealDay` | 3 | Days after confirmed visit day before auto-close |
+
+See [09-bulk-buy.md](09-bulk-buy.md) for the full commitment and token payment flow.
+
+---
+
 ## Update shop operational status
 
 Only for **approved** shops. Values: `enabled`, `disabled`, `on_hold`

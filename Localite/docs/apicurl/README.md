@@ -91,12 +91,15 @@ Authorization: Bearer <accessToken>
 3. `POST /api/orders/submit-flexible-order` with `shopId` + `textPayload`
 4. Wait for shop to accept → select payment → pay (mock) → deliver
 
-### Bulk buy: group electronics deal
+### Bulk buy: group electronics deal (v0.12)
 
-1. Super admin: `PATCH /api/admin/shops/:shopId` with `{ "bulkBuyEnabled": true }` for partner stores
-2. Shop admin: `GET /api/auth/me` → confirm `user.shops[].bulkBuyEnabled` is `true`
-3. Customer: `POST /api/bulk-buy/campaigns` (or bulk-enabled store creates with `shopId`)
-4. Customers: `POST /api/bulk-buy/campaigns/:id/subscribe` until threshold (default 10)
-5. Store inbox: `GET /api/bulk-buy/campaigns/inbox` → `POST .../offers` with discount and warranty
-6. Subscribers: `GET /api/bulk-buy/campaigns/:id` to view store offers
-7. To revoke store access: `PATCH /api/admin/shops/:shopId` with `{ "bulkBuyEnabled": false }`
+1. Super admin: `PATCH /api/admin/shops/:shopId` with `{ "bulkBuyEnabled": true }`
+2. Super admin (optional): `PATCH /api/admin/bulk-buy-settings` for collection days / defaults
+3. Customer: `POST /api/bulk-buy/campaigns` → subscribers until threshold
+4. Store: `POST /api/bulk-buy/campaigns/:id/offers` with `tokenAmount` + `proposedDealDay`
+5. Customer: `POST .../offers/:offerId/accept` → `PATCH .../commitment/mock-pay-token` (dev)
+6. Creator: `PATCH .../visit-poll` → customers `POST .../visit-poll/vote`
+7. Store: `GET .../offers/:offerId/commitments` → `PATCH .../commitments/:id/complete`
+8. Close: `PATCH .../close` or wait for auto-close after deal day
+
+Full cURL reference: [09-bulk-buy.md](09-bulk-buy.md)

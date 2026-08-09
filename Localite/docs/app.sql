@@ -7,6 +7,7 @@
 --
 -- CHANGELOG
 -- ---------
+-- 2026-08-09  v0.12 Bulk buy commitments; token booking; visit poll; platform settings; auto-expire
 -- 2026-08-08  v0.11 Bulk buy campaigns; participants; store offers; Shops.bulk_buy_enabled
 -- 2026-08-08  v0.10 Scheduled orders; OrderRatings; CustomerWishlistItems; catalog CSV import
 -- 2026-08-08  v0.9  Saved addresses; order delivery snapshot; offer discounts; COD collection; delivery radius; SMS/WhatsApp prefs; delivery reminders

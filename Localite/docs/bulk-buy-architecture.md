@@ -1,8 +1,8 @@
-# Bulk Buy — Architecture (v0.11)
+# Bulk Buy — Architecture (v0.11–v0.12)
 
-> Group buying for big-ticket electronics (refrigerators, TVs, washing machines, mobiles, etc.) in a hyperlocal area. Customers (or stores) start campaigns; interested buyers subscribe; when a threshold is reached, partner stores submit competitive offers; all subscribers are notified.
+> Group buying for big-ticket electronics (refrigerators, TVs, washing machines, mobiles, etc.) in a hyperlocal area. Customers (or stores) start campaigns; interested buyers subscribe; when a threshold is reached, partner stores submit competitive offers; subscribers accept one store, pay a booking token, vote on visit day, and complete at the store.
 
-**Introduced:** v0.11  
+**Introduced:** v0.11 (campaigns + offers) · **v0.12** (commitments + token + poll + close)  
 **Stack:** Same monorepo as core Localite — `apps/api`, `apps/mobile`, `packages/shared`  
 **API base path:** `/api/bulk-buy`  
 **Manual API reference:** [`docs/apicurl/09-bulk-buy.md`](./apicurl/09-bulk-buy.md)
@@ -37,14 +37,17 @@ Bulk Buy solves **group demand aggregation** for expensive items where a neighbo
 
 Bulk Buy is intentionally **isolated** from the kirana/grocery order pipeline. It does not use `Orders`, Razorpay checkout, or catalog cart flows.
 
-| In scope (v0.11) | Out of scope (v0.11) |
-|------------------|----------------------|
-| Campaign create (customer or store) | In-app payment for bulk items |
+| In scope (v0.11–v0.12) | Out of scope |
+|------------------------|--------------|
+| Campaign create (customer or store) | Full in-app payment for bulk item price |
 | Subscribe / withdraw interest | Order state machine integration |
-| Threshold → store inbox | Voting between offers |
+| Threshold → store inbox | Cross-area campaigns |
 | Store competitive offers | WhatsApp campaign sharing API |
-| Push to subscribers & stores | Purchase confirmation tracking |
-| Area-scoped discovery | Cross-area campaigns |
+| Accept one store offer + booking token | — |
+| Visit poll + confirmed deal day | — |
+| Commitment tracking + close / expire | — |
+| Push notifications | — |
+| Area-scoped discovery | — |
 
 ---
 
@@ -80,8 +83,12 @@ flowchart TB
     READY --> NOTIFY_C[Notify subscribers]
     READY --> OFFERS[Stores submit offers]
     OFFERS --> AVAIL[Status: offers_available]
-    AVAIL --> PUSH[Push offer to all subscribers]
-    PUSH --> BUY[Customers visit store to purchase]
+    AVAIL --> ACCEPT[Customers accept one store offer]
+    ACCEPT --> TOKEN[Pay booking token]
+    TOKEN --> POLL[Visit poll + vote]
+    POLL --> CONFIRM[confirmedDealDay set]
+    CONFIRM --> VISIT[Customers visit store]
+    VISIT --> DONE[Status: closed]
 ```
 
 ### Dual-origin campaigns
@@ -99,9 +106,9 @@ Both origins share the same subscribe → threshold → offer → notify flow.
 
 | Actor | Capabilities |
 |-------|----------------|
-| **Customer** (onboarded) | List campaigns in area, create campaign, subscribe / unsubscribe, view offers |
-| **Store admin** (onboarded, `bulkBuyEnabled` shop) | Create store campaign, view inbox, submit/update offer for campaigns in same area |
-| **Super admin** | Enable `bulkBuyEnabled` on shops, full API access, sees all inbox campaigns |
+| **Customer** (onboarded) | List campaigns, create, subscribe, **accept one offer**, pay token, vote poll, view commitments |
+| **Store admin** (onboarded, `bulkBuyEnabled` shop) | Create store campaign, inbox, submit offer (with token + deal day), view commitments, mark complete, close |
+| **Super admin** | Enable `bulkBuyEnabled`, platform settings, full API access |
 
 Middleware on all bulk-buy routes: `authenticate` + `requireOnboarded`.
 
@@ -135,6 +142,17 @@ collecting → ready_for_offers → offers_available → closed | expired | canc
 |--------|---------|
 | `subscribed` | Counted toward threshold |
 | `withdrawn` | Customer left while still `collecting` |
+
+### Commitment status (`BulkBuyCommitmentStatus`, v0.12)
+
+| Status | Meaning |
+|--------|---------|
+| `accepted` | Chose store offer; token not paid yet (or tokenAmount = 0) |
+| `token_pending` | Awaiting booking token payment |
+| `token_paid` | Token received |
+| `visit_scheduled` | `confirmedDealDay` set via poll match |
+| `completed` | Purchase confirmed at store |
+| `withdrawn` | Withdrew acceptance before token paid |
 
 ### Threshold transition
 
@@ -237,9 +255,19 @@ Mounted at: `app.use('/api/bulk-buy', bulkBuyRoutes)` in `apps/api/src/app.js`
 | POST | `/campaigns/:campaignId/subscribe` | Customer | Subscribe |
 | DELETE | `/campaigns/:campaignId/subscribe` | Customer | Withdraw (collecting only) |
 | GET | `/campaigns/:campaignId/offers` | Any onboarded | List store offers |
-| POST | `/campaigns/:campaignId/offers` | Store admin | Submit or update offer |
+| POST | `/campaigns/:campaignId/offers` | Store admin | Submit or update offer (`tokenAmount`, `proposedDealDay` required) |
+| POST | `/campaigns/:campaignId/offers/:offerId/accept` | Customer | Accept one store offer |
+| DELETE | `/campaigns/:campaignId/commitment` | Customer | Withdraw acceptance (pre-token) |
+| POST | `/campaigns/:campaignId/commitment/token-order` | Customer | Razorpay token order |
+| POST | `/campaigns/:campaignId/commitment/verify-token` | Customer | Verify Razorpay token |
+| PATCH | `/campaigns/:campaignId/commitment/mock-pay-token` | Customer | Dev mock token pay |
+| PATCH | `/campaigns/:campaignId/visit-poll` | Creator | Set poll dates |
+| POST | `/campaigns/:campaignId/visit-poll/vote` | Customer | Vote on poll date |
+| GET | `/campaigns/:campaignId/offers/:offerId/commitments` | Store / creator | List acceptances |
+| PATCH | `/campaigns/:campaignId/commitments/:participantId/complete` | Store / customer | Mark purchased |
+| PATCH | `/campaigns/:campaignId/close` | Creator / store | Close campaign |
 
-**Admin (shop enablement):** `PATCH /api/admin/shops/:shopId` with `{ "bulkBuyEnabled": true }` — not under `/api/bulk-buy`.
+**Admin (settings):** `GET/PATCH /api/admin/bulk-buy-settings` — collection days, defaults, auto-close grace.
 
 Route ordering note: `/campaigns/inbox` and `/campaigns/mine` are registered **before** `/campaigns/:campaignId` to avoid param capture.
 
@@ -250,8 +278,11 @@ Route ordering note: `/campaigns/inbox` and `/campaigns/mine` are registered **b
 | Service | Responsibility |
 |---------|----------------|
 | `bulkBuyService.js` | CRUD, subscribe, threshold, offers, serialization |
-| `bulkBuyNotificationService.js` | Push on threshold and new offers |
-| `bulkBuySchemaMigration.js` | DDL for v0.11 tables |
+| `bulkBuyCommitmentService.js` | Accept offer, token pay, poll, close, auto-close |
+| `bulkBuySettingsService.js` | Platform defaults (super admin) |
+| `bulkBuySchedulerService.js` | Hourly expire + auto-close job |
+| `bulkBuyNotificationService.js` | Push on threshold, offers, accept, token, deal day |
+| `bulkBuySchemaMigration.js` | DDL for v0.11 + v0.12 tables |
 
 ### Key rules
 
@@ -377,23 +408,21 @@ docs/apicurl/09-bulk-buy.md
 
 ## 13. MVP scope & future work
 
-### Shipped in v0.11
+### Shipped in v0.12
 
-- Full campaign + subscribe + threshold + offer loop
-- Customer- and store-created campaigns
-- Competitive multi-store offers
-- Push notifications
-- Isolated mobile module
-- API tests (`bulkBuy.test.js`)
+- Per-customer store offer acceptance (one store per campaign)
+- Per-store acceptance counts; stores proceed with partial group size
+- Booking token on offers (Razorpay + dev mock)
+- Visit poll + proposed/confirmed deal day
+- Commitment tracking, mark complete, manual/auto close
+- Super admin platform settings + collection auto-expire
+- API tests: `apps/api/tests/bulkBuy.test.js` (18+ cases)
 
 ### Planned enhancements
 
 | Feature | Notes |
 |---------|-------|
-| `expired` / `cancelled` automation | Cron on `deadlineAt` |
-| Firm commitment / token deposit | Stronger guarantee for stores |
-| Offer voting or creator pick | Choose winning store in-app |
-| `purchased` confirmation | Track fulfillment per subscriber |
+| Razorpay token UI in mobile (production) | Currently mock pay in dev |
 | Share campaign link | Society WhatsApp deep link |
 | Super admin moderation | Approve customer campaigns |
 | Analytics | Conversion rate per store / category |

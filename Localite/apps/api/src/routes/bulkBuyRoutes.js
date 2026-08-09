@@ -13,6 +13,18 @@ import {
   unsubscribeFromCampaign,
   updateCampaign,
 } from '../services/bulkBuyService.js';
+import {
+  acceptStoreOffer,
+  closeCampaign,
+  createTokenPaymentOrder,
+  listOfferCommitments,
+  markCommitmentCompleted,
+  mockTokenPayment,
+  setVisitPollDates,
+  verifyTokenPayment,
+  voteVisitPoll,
+  withdrawOfferAcceptance,
+} from '../services/bulkBuyCommitmentService.js';
 
 const router = Router();
 
@@ -74,6 +86,36 @@ router.patch('/campaigns/:campaignId', async (req, res, next) => {
   }
 });
 
+router.patch('/campaigns/:campaignId/close', async (req, res, next) => {
+  try {
+    const campaign = await closeCampaign(req.user, req.params.campaignId, { reason: req.body?.reason });
+    res.json({ campaign });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/campaigns/:campaignId/visit-poll', async (req, res, next) => {
+  try {
+    const { visitPollDates } = req.body;
+    const campaign = await setVisitPollDates(req.user, req.params.campaignId, visitPollDates);
+    res.json({ campaign });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/campaigns/:campaignId/visit-poll/vote', requireRole(UserRole.CUSTOMER), async (req, res, next) => {
+  try {
+    const { pollDate } = req.body;
+    if (!pollDate) return res.status(400).json({ error: 'pollDate is required' });
+    const campaign = await voteVisitPoll(req.user, req.params.campaignId, pollDate);
+    res.json({ campaign });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post('/campaigns/:campaignId/subscribe', requireRole(UserRole.CUSTOMER), async (req, res, next) => {
   try {
     const campaign = await subscribeToCampaign(req.params.campaignId, req.user.id);
@@ -103,7 +145,16 @@ router.get('/campaigns/:campaignId/offers', async (req, res, next) => {
 
 router.post('/campaigns/:campaignId/offers', requireRole(UserRole.ADMIN, UserRole.SUPER_ADMIN), async (req, res, next) => {
   try {
-    const { shopId, discountType, discountValue, extras, termsText, validUntil } = req.body;
+    const {
+      shopId,
+      discountType,
+      discountValue,
+      extras,
+      termsText,
+      validUntil,
+      tokenAmount,
+      proposedDealDay,
+    } = req.body;
     if (!shopId) return res.status(400).json({ error: 'shopId is required' });
     const offer = await submitStoreOffer(req.user, req.params.campaignId, shopId, {
       discountType,
@@ -111,8 +162,73 @@ router.post('/campaigns/:campaignId/offers', requireRole(UserRole.ADMIN, UserRol
       extras,
       termsText,
       validUntil,
+      tokenAmount,
+      proposedDealDay,
     });
     res.status(201).json({ offer });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/campaigns/:campaignId/offers/:offerId/commitments', async (req, res, next) => {
+  try {
+    const commitments = await listOfferCommitments(req.user, req.params.campaignId, req.params.offerId);
+    res.json({ commitments });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/campaigns/:campaignId/offers/:offerId/accept', requireRole(UserRole.CUSTOMER), async (req, res, next) => {
+  try {
+    const campaign = await acceptStoreOffer(req.user, req.params.campaignId, req.params.offerId);
+    res.json({ campaign });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/campaigns/:campaignId/commitment', requireRole(UserRole.CUSTOMER), async (req, res, next) => {
+  try {
+    const campaign = await withdrawOfferAcceptance(req.user, req.params.campaignId);
+    res.json({ campaign });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/campaigns/:campaignId/commitment/token-order', requireRole(UserRole.CUSTOMER), async (req, res, next) => {
+  try {
+    const order = await createTokenPaymentOrder(req.user, req.params.campaignId);
+    res.json(order);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/campaigns/:campaignId/commitment/verify-token', requireRole(UserRole.CUSTOMER), async (req, res, next) => {
+  try {
+    const campaign = await verifyTokenPayment(req.user, req.params.campaignId, req.body);
+    res.json({ campaign });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/campaigns/:campaignId/commitment/mock-pay-token', requireRole(UserRole.CUSTOMER), async (req, res, next) => {
+  try {
+    const campaign = await mockTokenPayment(req.user, req.params.campaignId);
+    res.json({ campaign });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/campaigns/:campaignId/commitments/:participantId/complete', async (req, res, next) => {
+  try {
+    const campaign = await markCommitmentCompleted(req.user, req.params.campaignId, req.params.participantId);
+    res.json({ campaign });
   } catch (err) {
     next(err);
   }

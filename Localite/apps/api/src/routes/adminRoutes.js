@@ -561,4 +561,24 @@ router.patch('/users/:userId/role', async (req, res, next) => {  try {
   }
 });
 
+router.get('/bulk-buy-settings', async (req, res, next) => {
+  try {
+    const { getBulkBuySettings } = await import('../services/bulkBuySettingsService.js');
+    const settings = await getBulkBuySettings();
+    res.json({ settings });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/bulk-buy-settings', async (req, res, next) => {
+  try {
+    const { updateBulkBuySettings } = await import('../services/bulkBuySettingsService.js');
+    const settings = await updateBulkBuySettings(req.body);
+    res.json({ settings });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

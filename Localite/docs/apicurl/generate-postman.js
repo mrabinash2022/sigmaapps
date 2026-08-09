@@ -260,6 +260,9 @@ const collection = {
           },
         }),
         req('Get Campaign', 'GET', '/api/bulk-buy/campaigns/{{campaignId}}'),
+        req('Edit Campaign', 'PATCH', '/api/bulk-buy/campaigns/{{campaignId}}', {
+          body: { title: 'Updated bulk buy title', description: 'Updated specs', minSubscribers: 10 },
+        }),
         req('Subscribe', 'POST', '/api/bulk-buy/campaigns/{{campaignId}}/subscribe'),
         req('Unsubscribe', 'DELETE', '/api/bulk-buy/campaigns/{{campaignId}}/subscribe'),
         req('My Campaigns', 'GET', '/api/bulk-buy/campaigns/mine'),
@@ -270,10 +273,32 @@ const collection = {
             shopId: '{{shopId}}',
             discountType: 'percent',
             discountValue: 12,
-            termsText: 'Valid when all buyers purchase within 30 days',
+            tokenAmount: 99,
+            proposedDealDay: '2026-08-16',
+            termsText: 'Valid when buyers visit on confirmed deal day',
             extras: { extendedWarrantyMonths: 12, installation: true, freebies: 'Gift voucher' },
           },
         }),
+        req('Accept Store Offer', 'POST', '/api/bulk-buy/campaigns/{{campaignId}}/offers/{{offerId}}/accept'),
+        req('Mock Pay Token (dev)', 'PATCH', '/api/bulk-buy/campaigns/{{campaignId}}/commitment/mock-pay-token'),
+        req('Create Token Order (Razorpay)', 'POST', '/api/bulk-buy/campaigns/{{campaignId}}/commitment/token-order'),
+        req('Verify Token Payment', 'POST', '/api/bulk-buy/campaigns/{{campaignId}}/commitment/verify-token', {
+          body: {
+            razorpayOrderId: 'order_test',
+            razorpayPaymentId: 'pay_test',
+            razorpaySignature: 'sig_test',
+          },
+        }),
+        req('Withdraw Offer Commitment', 'DELETE', '/api/bulk-buy/campaigns/{{campaignId}}/commitment'),
+        req('Set Visit Poll', 'PATCH', '/api/bulk-buy/campaigns/{{campaignId}}/visit-poll', {
+          body: { visitPollDates: ['2026-08-16', '2026-08-23', '2026-08-30'] },
+        }),
+        req('Vote Visit Poll', 'POST', '/api/bulk-buy/campaigns/{{campaignId}}/visit-poll/vote', {
+          body: { pollDate: '2026-08-16' },
+        }),
+        req('List Offer Commitments', 'GET', '/api/bulk-buy/campaigns/{{campaignId}}/offers/{{offerId}}/commitments'),
+        req('Mark Commitment Complete', 'PATCH', '/api/bulk-buy/campaigns/{{campaignId}}/commitments/{{participantId}}/complete'),
+        req('Close Campaign', 'PATCH', '/api/bulk-buy/campaigns/{{campaignId}}/close', { body: { reason: 'deal_complete' } }),
       ],
     },
     {
@@ -304,6 +329,14 @@ const collection = {
         req('Disable Bulk Buy Partner', 'PATCH', '/api/admin/shops/{{shopId}}', {
           body: { bulkBuyEnabled: false },
           desc: 'Revoke bulk buy access for shopkeepers. Customers are unaffected.',
+        }),
+        req('Get Bulk Buy Settings', 'GET', '/api/admin/bulk-buy-settings'),
+        req('Update Bulk Buy Settings', 'PATCH', '/api/admin/bulk-buy-settings', {
+          body: {
+            collectionPeriodDays: 7,
+            defaultMinSubscribers: 10,
+            autoCloseGraceDaysAfterDealDay: 3,
+          },
         }),
         req('Enable Shop', 'PATCH', '/api/admin/shops/{{shopId}}/operational-status', { body: { operationalStatus: 'enabled' } }),
         req('Disable Shop', 'PATCH', '/api/admin/shops/{{shopId}}/operational-status', { body: { operationalStatus: 'disabled' } }),

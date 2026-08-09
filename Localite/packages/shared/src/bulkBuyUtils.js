@@ -30,3 +30,12 @@ export function formatBulkBuyDiscount(offer) {
   }
   return offer.termsText || 'Special bulk deal';
 }
+
+export function formatBulkBuyTokenAmount(amount) {
+  if (amount == null || Number(amount) <= 0) return 'No token required';
+  return `₹${Number(amount)} token`;
+}
+
+export function formatBulkBuyAcceptanceCount(acceptanceCount, subscriberCount) {
+  return `${acceptanceCount || 0} of ${subscriberCount || 0} committed`;
+}

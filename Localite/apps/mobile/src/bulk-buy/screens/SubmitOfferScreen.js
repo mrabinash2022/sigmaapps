@@ -14,6 +14,14 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { api } from '../../services/api';
 import { useTheme } from '../../context/ThemeContext';
 
+function nextSaturday() {
+  const cursor = new Date();
+  while (cursor.getDay() !== 6) {
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return cursor.toISOString().slice(0, 10);
+}
+
 export default function SubmitOfferScreen() {
   const route = useRoute();
   const navigation = useNavigation();
@@ -22,6 +30,8 @@ export default function SubmitOfferScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [discountPercent, setDiscountPercent] = useState('10');
+  const [tokenAmount, setTokenAmount] = useState('99');
+  const [proposedDealDay, setProposedDealDay] = useState(nextSaturday());
   const [termsText, setTermsText] = useState('');
   const [warrantyMonths, setWarrantyMonths] = useState('12');
   const [freebies, setFreebies] = useState('');
@@ -29,6 +39,10 @@ export default function SubmitOfferScreen() {
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
+    if (!proposedDealDay.trim()) {
+      Alert.alert('Required', 'Please set a proposed visit day (YYYY-MM-DD).');
+      return;
+    }
     setSubmitting(true);
     try {
       const apps = await api.getMyShopApplication();
@@ -42,6 +56,8 @@ export default function SubmitOfferScreen() {
         shopId: shop.id,
         discountType: 'percent',
         discountValue: Number(discountPercent) || 0,
+        tokenAmount: Number(tokenAmount) || 0,
+        proposedDealDay: proposedDealDay.trim(),
         termsText: termsText.trim() || `Bulk deal for ${campaignTitle}`,
         extras: {
           extendedWarrantyMonths: Number(warrantyMonths) || 0,
@@ -50,7 +66,7 @@ export default function SubmitOfferScreen() {
         },
       });
 
-      Alert.alert('Offer sent', 'All interested customers will be notified.', [
+      Alert.alert('Offer sent', 'Customers can accept your deal and pay the booking token.', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (err) {
@@ -72,6 +88,27 @@ export default function SubmitOfferScreen() {
         keyboardType="decimal-pad"
         placeholderTextColor={colors.textMuted}
       />
+
+      <Text style={styles.label}>Booking token amount (₹)</Text>
+      <TextInput
+        style={styles.input}
+        value={tokenAmount}
+        onChangeText={setTokenAmount}
+        keyboardType="number-pad"
+        placeholder="e.g. 99 or 999"
+        placeholderTextColor={colors.textMuted}
+      />
+      <Text style={styles.hint}>Customers pay this to confirm their spot. Use 0 for no token.</Text>
+
+      <Text style={styles.label}>Proposed visit day (YYYY-MM-DD)</Text>
+      <TextInput
+        style={styles.input}
+        value={proposedDealDay}
+        onChangeText={setProposedDealDay}
+        placeholder="2026-08-16"
+        placeholderTextColor={colors.textMuted}
+      />
+      <Text style={styles.hint}>Must match a poll date voted by customers to confirm the final visit day.</Text>
 
       <Text style={styles.label}>Extended warranty (months)</Text>
       <TextInput
@@ -102,7 +139,7 @@ export default function SubmitOfferScreen() {
         value={termsText}
         onChangeText={setTermsText}
         multiline
-        placeholder="e.g. Valid when all interested buyers purchase within 30 days at our Pimpri branch."
+        placeholder="e.g. Valid when buyers visit on the confirmed deal day."
         placeholderTextColor={colors.textMuted}
       />
 
@@ -123,6 +160,7 @@ function createStyles(colors) {
     content: { padding: 16, paddingBottom: 40 },
     heading: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 16 },
     label: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 8, marginTop: 12 },
+    hint: { fontSize: 12, color: colors.textMuted, marginTop: 4, marginBottom: 4 },
     input: {
       borderWidth: 1,
       borderColor: colors.border,

@@ -709,6 +709,34 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  acceptBulkBuyOffer: (campaignId, offerId) =>
+    request(`/api/bulk-buy/campaigns/${campaignId}/offers/${offerId}/accept`, { method: 'POST' }),
+  withdrawBulkBuyCommitment: (campaignId) =>
+    request(`/api/bulk-buy/campaigns/${campaignId}/commitment`, { method: 'DELETE' }),
+  mockPayBulkBuyToken: (campaignId) =>
+    request(`/api/bulk-buy/campaigns/${campaignId}/commitment/mock-pay-token`, { method: 'PATCH' }),
+  setBulkBuyVisitPoll: (campaignId, visitPollDates) =>
+    request(`/api/bulk-buy/campaigns/${campaignId}/visit-poll`, {
+      method: 'PATCH',
+      body: JSON.stringify({ visitPollDates }),
+    }),
+  voteBulkBuyVisitPoll: (campaignId, pollDate) =>
+    request(`/api/bulk-buy/campaigns/${campaignId}/visit-poll/vote`, {
+      method: 'POST',
+      body: JSON.stringify({ pollDate }),
+    }),
+  closeBulkBuyCampaign: (campaignId, reason) =>
+    request(`/api/bulk-buy/campaigns/${campaignId}/close`, {
+      method: 'PATCH',
+      body: JSON.stringify({ reason }),
+    }),
+  getBulkBuyOfferCommitments: (campaignId, offerId) =>
+    request(`/api/bulk-buy/campaigns/${campaignId}/offers/${offerId}/commitments`),
+  completeBulkBuyCommitment: (campaignId, participantId) =>
+    request(`/api/bulk-buy/campaigns/${campaignId}/commitments/${participantId}/complete`, { method: 'PATCH' }),
+  getBulkBuySettings: () => request('/api/admin/bulk-buy-settings'),
+  updateBulkBuySettings: (body) =>
+    request('/api/admin/bulk-buy-settings', { method: 'PATCH', body: JSON.stringify(body) }),
 };
 
 export { API_URL };

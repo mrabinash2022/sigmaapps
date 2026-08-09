@@ -63,3 +63,49 @@ export async function notifyBulkBuyOfferPublished(campaign, offer) {
     data: { screen: 'BulkBuyCampaign', campaignId: campaign.id, offerId: offer.id },
   })));
 }
+
+export async function notifyBulkBuyOfferAccepted(campaign, offer, customer) {
+  const shop = offer.shop;
+  if (!shop?.id) return;
+  const links = await ShopUser.findAll({ where: { shopId: shop.id }, attributes: ['userId'] });
+  const userIds = [...new Set(links.map((l) => l.userId))];
+  const title = 'Customer accepted your bulk offer';
+  const body = `${customer.name || 'A customer'} committed to "${campaign.title}".`;
+
+  await Promise.all(userIds.map((userId) => sendPushToUser(userId, {
+    title,
+    body,
+    data: { screen: 'BulkBuyCampaign', campaignId: campaign.id, offerId: offer.id },
+  })));
+}
+
+export async function notifyBulkBuyTokenPaid(campaign, offer, customer) {
+  const shop = offer?.shop;
+  if (!shop?.id) return;
+  const links = await ShopUser.findAll({ where: { shopId: shop.id }, attributes: ['userId'] });
+  const userIds = [...new Set(links.map((l) => l.userId))];
+  const title = 'Bulk buy token received';
+  const body = `${customer.name || 'A customer'} paid the booking token for "${campaign.title}".`;
+
+  await Promise.all(userIds.map((userId) => sendPushToUser(userId, {
+    title,
+    body,
+    data: { screen: 'BulkBuyCampaign', campaignId: campaign.id, offerId: offer.id },
+  })));
+}
+
+export async function notifyBulkBuyDealDayConfirmed(campaign, offer, dealDay) {
+  const participants = await BulkBuyParticipant.findAll({
+    where: { campaignId: campaign.id, acceptedOfferId: offer.id },
+    attributes: ['customerId'],
+  });
+  const shopName = offer.shop?.name || 'the store';
+  const title = 'Bulk buy visit day confirmed';
+  const body = `Visit ${shopName} on ${dealDay} for "${campaign.title}".`;
+
+  await Promise.all(participants.map((p) => sendPushToUser(p.customerId, {
+    title,
+    body,
+    data: { screen: 'BulkBuyCampaign', campaignId: campaign.id, offerId: offer.id },
+  })));
+}

@@ -72,6 +72,27 @@ const BulkBuyCampaign = sequelize.define('BulkBuyCampaign', {
     allowNull: true,
     field: 'threshold_reached_at',
   },
+  visitPollDates: {
+    type: DataTypes.JSONB,
+    allowNull: false,
+    defaultValue: [],
+    field: 'visit_poll_dates',
+  },
+  closedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'closed_at',
+  },
+  closedByUserId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    field: 'closed_by_user_id',
+  },
+  closeReason: {
+    type: DataTypes.STRING(64),
+    allowNull: true,
+    field: 'close_reason',
+  },
 }, {
   tableName: 'BulkBuyCampaigns',
 });

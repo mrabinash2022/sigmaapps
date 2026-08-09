@@ -88,26 +88,34 @@ npm run test:api:ci
 1. Loads `apps/api/dev.local` for `DB_HOST`, `DB_USER`, `DB_PASSWORD`, etc.
 2. Creates `localite_test_db` if it does not exist
 3. Seeds demo data (`apps/api/src/seeders/seed.js`)
-4. Runs **31 tests** across 7 suites (~30–60 seconds)
+4. Seeds demo data (`apps/api/src/seeders/seed.js`)
+5. Runs all Jest suites in `apps/api/tests/` (~80 tests, ~60–120 seconds)
 
 ### Expected output
 
 ```
-Test Suites: 7 passed, 7 total
-Tests:       31 passed, 31 total
+Test Suites: 12 passed, 12 total
+Tests:       80+ passed
 ```
+
+(Run `npm run test:api:ci` locally for the exact count.)
 
 ### Test suites
 
 | File | Coverage |
 |------|----------|
 | `health.test.js` | `GET /api/health` |
-| `auth.test.js` | Login, OTP, `/me`, invalid credentials |
+| `auth.test.js` | Login, OTP, `/me`, `bulkBuyEnabled` on shop admin |
 | `areas-shops.test.js` | Areas, shops, catalog |
 | `orders.test.js` | Place → accept → COD → ship → deliver → reorder, reject |
-| `admin.test.js` | Super admin shops/users, RBAC |
+| `admin.test.js` | Super admin shops/users, `bulkBuyEnabled`, bulk buy settings |
 | `support.test.js` | Tickets, messages |
 | `app-logs.test.js` | App info, client logs, referrals |
+| `bulkBuy.test.js` | **v0.12** campaigns, offers, accept, token, poll, close, settings |
+| `catalog-stock.test.js` | Catalog stock tracking |
+| `extras.test.js` | Scheduled orders, wishlist, ratings |
+| `home.test.js` | Home screens, favorites |
+| `reports.test.js` | PDF/Excel reports |
 
 ### Test-only environment
 
@@ -225,7 +233,7 @@ Tests run **automatically** on GitHub when you push or open a PR that touches `L
 
 | Workflow | Trigger | What runs |
 |----------|---------|-----------|
-| [`api-test.yml`](../../.github/workflows/api-test.yml) | **Every push** (any branch) + **every PR** + manual | `npm run test:api:ci` — 31 API tests |
+| [`api-test.yml`](../../.github/workflows/api-test.yml) | **Every push** (any branch) + **every PR** + manual | `npm run test:api:ci` — all API test suites |
 | [`mobile-smoke.yml`](../../.github/workflows/mobile-smoke.yml) | Push to `main`, nightly, manual | Maestro on Android emulator |
 
 ### What happens on push / PR
@@ -252,7 +260,7 @@ npm run test:api:ci
 In GitHub repo **Settings** → **Branches** → branch protection for `main`:
 
 - Enable **Require status checks to pass**
-- Select **Jest + Supertest (31 tests)**
+- Select **Jest + Supertest** status check (or the workflow name used in your repo)
 
 Repo path in workflows is `Localite/` (monorepo root is `sigmaapps`).
 
@@ -272,5 +280,7 @@ Repo path in workflows is `Localite/` (monorepo root is `sigmaapps`).
 | Doc | Purpose |
 |-----|---------|
 | [docs/apicurl/README.md](../apicurl/README.md) | Manual API testing with cURL / Postman |
+| [docs/apicurl/09-bulk-buy.md](../apicurl/09-bulk-buy.md) | Bulk buy v0.12 cURL reference |
+| [docs/bulk-buy-architecture.md](../bulk-buy-architecture.md) | Bulk buy architecture |
 | [apps/e2e-mobile/README.md](../../apps/e2e-mobile/README.md) | Maestro flows in detail |
 | [docs/code-review.md](../code-review.md) | PR review checklist |

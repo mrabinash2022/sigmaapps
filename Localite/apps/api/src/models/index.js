@@ -20,6 +20,7 @@ import CustomerWishlistItem from './CustomerWishlistItem.js';
 import BulkBuyCampaign from './BulkBuyCampaign.js';
 import BulkBuyParticipant from './BulkBuyParticipant.js';
 import BulkBuyStoreOffer from './BulkBuyStoreOffer.js';
+import BulkBuyPlatformSettings from './BulkBuyPlatformSettings.js';
 
 // Area ↔ Shop
 Area.hasMany(Shop, { foreignKey: 'areaId', as: 'shops' });
@@ -137,6 +138,8 @@ BulkBuyCampaign.hasMany(BulkBuyParticipant, { foreignKey: 'campaignId', as: 'par
 BulkBuyParticipant.belongsTo(BulkBuyCampaign, { foreignKey: 'campaignId', as: 'campaign' });
 User.hasMany(BulkBuyParticipant, { foreignKey: 'customerId', as: 'bulkBuyParticipations' });
 BulkBuyParticipant.belongsTo(User, { foreignKey: 'customerId', as: 'customer' });
+BulkBuyParticipant.belongsTo(BulkBuyStoreOffer, { foreignKey: 'acceptedOfferId', as: 'acceptedOffer' });
+BulkBuyStoreOffer.hasMany(BulkBuyParticipant, { foreignKey: 'acceptedOfferId', as: 'commitments' });
 
 BulkBuyCampaign.hasMany(BulkBuyStoreOffer, { foreignKey: 'campaignId', as: 'offers' });
 BulkBuyStoreOffer.belongsTo(BulkBuyCampaign, { foreignKey: 'campaignId', as: 'campaign' });
@@ -168,4 +171,5 @@ export {
   BulkBuyCampaign,
   BulkBuyParticipant,
   BulkBuyStoreOffer,
+  BulkBuyPlatformSettings,
 };

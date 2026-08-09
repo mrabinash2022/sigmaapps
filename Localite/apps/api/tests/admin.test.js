@@ -67,4 +67,22 @@ describe('Super Admin', () => {
       .set(authHeader(token))
       .send({ bulkBuyEnabled: true });
   });
+
+  it('updates bulk buy platform settings', async () => {
+    const { token } = await login(DEMO.superAdmin);
+    const res = await api()
+      .patch('/api/admin/bulk-buy-settings')
+      .set(authHeader(token))
+      .send({ collectionPeriodDays: 7, defaultMinSubscribers: 10, autoCloseGraceDaysAfterDealDay: 3 });
+    expect(res.status).toBe(200);
+    expect(res.body.settings.defaultMinSubscribers).toBe(10);
+  });
+
+  it('denies bulk buy settings to customers', async () => {
+    const { token } = await login(DEMO.customer);
+    const res = await api()
+      .get('/api/admin/bulk-buy-settings')
+      .set(authHeader(token));
+    expect(res.status).toBe(403);
+  });
 });

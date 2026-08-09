@@ -102,4 +102,79 @@ export async function migrateBulkBuySchema() {
     CREATE INDEX IF NOT EXISTS idx_bulk_buy_offers_campaign
     ON "BulkBuyStoreOffers"(campaign_id);
   `);
+
+  await migrateBulkBuyV012Schema();
+}
+
+export async function migrateBulkBuyV012Schema() {
+  await sequelize.query(`
+    DO $$ BEGIN
+      CREATE TYPE enum_bulk_buy_commitment_status AS ENUM (
+        'accepted', 'token_pending', 'token_paid', 'visit_scheduled', 'completed', 'withdrawn'
+      );
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$;
+  `);
+
+  await sequelize.query(`
+    DO $$ BEGIN
+      CREATE TYPE enum_bulk_buy_token_payment_status AS ENUM (
+        'not_required', 'pending', 'paid', 'failed', 'refunded'
+      );
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$;
+  `);
+
+  await sequelize.query(`
+    ALTER TABLE "BulkBuyCampaigns"
+    ADD COLUMN IF NOT EXISTS visit_poll_dates JSONB NOT NULL DEFAULT '[]',
+    ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS closed_by_user_id UUID REFERENCES "Users"(id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS close_reason VARCHAR(64);
+  `);
+
+  await sequelize.query(`
+    ALTER TABLE "BulkBuyStoreOffers"
+    ADD COLUMN IF NOT EXISTS token_amount DECIMAL(12, 2) NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS proposed_deal_day DATE,
+    ADD COLUMN IF NOT EXISTS confirmed_deal_day DATE;
+  `);
+
+  await sequelize.query(`
+    ALTER TABLE "BulkBuyParticipants"
+    ADD COLUMN IF NOT EXISTS accepted_offer_id UUID REFERENCES "BulkBuyStoreOffers"(id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS commitment_status enum_bulk_buy_commitment_status,
+    ADD COLUMN IF NOT EXISTS token_amount DECIMAL(12, 2),
+    ADD COLUMN IF NOT EXISTS token_payment_status enum_bulk_buy_token_payment_status,
+    ADD COLUMN IF NOT EXISTS razorpay_order_id VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS razorpay_payment_id VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS poll_vote_date DATE,
+    ADD COLUMN IF NOT EXISTS scheduled_visit_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS token_paid_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+  `);
+
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS "BulkBuyPlatformSettings" (
+      id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+      collection_period_days INTEGER NOT NULL DEFAULT 7 CHECK (collection_period_days >= 1),
+      default_min_subscribers INTEGER NOT NULL DEFAULT 10 CHECK (default_min_subscribers >= 2),
+      auto_close_grace_days_after_deal_day INTEGER NOT NULL DEFAULT 3 CHECK (auto_close_grace_days_after_deal_day >= 0),
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await sequelize.query(`
+    INSERT INTO "BulkBuyPlatformSettings" (id)
+    VALUES (1)
+    ON CONFLICT (id) DO NOTHING;
+  `);
+
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS idx_bulk_buy_participants_offer
+    ON "BulkBuyParticipants"(accepted_offer_id)
+    WHERE accepted_offer_id IS NOT NULL;
+  `);
 }
