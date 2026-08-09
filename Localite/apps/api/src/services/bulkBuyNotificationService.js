@@ -79,19 +79,36 @@ export async function notifyBulkBuyOfferAccepted(campaign, offer, customer) {
   })));
 }
 
-export async function notifyBulkBuyTokenPaid(campaign, offer, customer) {
+export async function notifyBulkBuyTokenSubmitted(campaign, offer, customer) {
   const shop = offer?.shop;
   if (!shop?.id) return;
   const links = await ShopUser.findAll({ where: { shopId: shop.id }, attributes: ['userId'] });
   const userIds = [...new Set(links.map((l) => l.userId))];
-  const title = 'Bulk buy token received';
-  const body = `${customer.name || 'A customer'} paid the booking token for "${campaign.title}".`;
+  const title = 'Bulk buy token payment received';
+  const body = `${customer.name || 'A customer'} paid the booking token for "${campaign.title}". Please confirm in the app.`;
 
   await Promise.all(userIds.map((userId) => sendPushToUser(userId, {
     title,
     body,
     data: { screen: 'BulkBuyCampaign', campaignId: campaign.id, offerId: offer.id },
   })));
+}
+
+export async function notifyBulkBuyTokenConfirmed(campaign, offer, customer) {
+  if (!customer?.id) return;
+  const shopName = offer?.shop?.name || 'the store';
+  const title = 'Token payment confirmed';
+  const body = `${shopName} confirmed your booking token for "${campaign.title}". You can vote for a visit day when the poll opens.`;
+
+  await sendPushToUser(customer.id, {
+    title,
+    body,
+    data: { screen: 'BulkBuyCampaign', campaignId: campaign.id, offerId: offer?.id },
+  });
+}
+
+export async function notifyBulkBuyTokenPaid(campaign, offer, customer) {
+  return notifyBulkBuyTokenSubmitted(campaign, offer, customer);
 }
 
 export async function notifyBulkBuyDealDayConfirmed(campaign, offer, dealDay) {

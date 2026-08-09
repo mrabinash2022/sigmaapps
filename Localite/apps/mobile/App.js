@@ -62,7 +62,11 @@ const bulkBuyStackScreens = (
     <Stack.Screen name="BulkBuyCreateCampaign" component={CreateCampaignScreen} options={{ title: 'Start campaign' }} />
     <Stack.Screen name="BulkBuyEditCampaign" component={CreateCampaignScreen} options={{ title: 'Edit campaign' }} />
     <Stack.Screen name="BulkBuyCampaignDetail" component={CampaignDetailScreen} options={{ title: 'Campaign' }} />
-    <Stack.Screen name="BulkBuySubmitOffer" component={SubmitOfferScreen} options={{ title: 'Submit offer' }} />
+    <Stack.Screen
+      name="BulkBuySubmitOffer"
+      component={SubmitOfferScreen}
+      options={({ route }) => ({ title: route.params?.offer ? 'Edit offer' : 'Submit offer' })}
+    />
   </>
 );
 
@@ -262,7 +266,7 @@ function AdminTabs() {
   );
 
   return (
-    <Tab.Navigator screenOptions={tabScreenOptions}>
+    <Tab.Navigator key={shopBulkBuyEnabled ? 'admin-bulk-on' : 'admin-bulk-off'} screenOptions={tabScreenOptions}>
       <Tab.Screen
         name="HomeTab"
         component={ShopkeeperHomeScreen}
@@ -328,8 +332,6 @@ function AdminTabs() {
 }
 
 function AdminStack() {
-  const { user } = useAuth();
-  const shopBulkBuyEnabled = shopHasBulkBuyEnabled(user);
   const headerOptions = useHeaderOptions();
   return (
     <Stack.Navigator screenOptions={{ ...headerOptions, headerRight: () => <LogoutButton /> }}>
@@ -346,7 +348,7 @@ function AdminStack() {
       <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Reports' }} />
       <Stack.Screen name="ManageOffers" component={ManageOffersScreen} options={{ title: 'Offers & discounts' }} />
       <Stack.Screen name="ManageStoreInfo" component={ManageStoreInfoScreen} options={{ title: 'Store info' }} />
-      {shopBulkBuyEnabled && bulkBuyStackScreens}
+      {bulkBuyStackScreens}
     </Stack.Navigator>
   );
 }

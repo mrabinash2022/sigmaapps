@@ -14,12 +14,14 @@ import {
   formatBulkBuyDiscount,
   formatBulkBuyProgress,
   formatBulkBuyTokenAmount,
+  formatBulkBuyTokenPaymentStatus,
 } from '@localite/shared';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { UserRole } from '@localite/shared';
 import { shopHasBulkBuyEnabled } from '../../utils/profile';
+import RazorpayCheckout from '../../components/RazorpayCheckout';
 
 function nextSaturdayDates(count = 3) {
   const dates = [];
@@ -31,6 +33,24 @@ function nextSaturdayDates(count = 3) {
     }
   }
   return dates;
+}
+
+function commitmentNextStep(commitment) {
+  if (!commitment) return null;
+  switch (commitment.commitmentStatus) {
+    case 'token_pending':
+      return `Pay the ${formatBulkBuyTokenAmount(commitment.tokenAmount)} booking token. The store will confirm your payment in the app.`;
+    case 'token_payment_submitted':
+      return 'Payment submitted. Waiting for the store to confirm your booking token.';
+    case 'token_paid':
+      return 'Token confirmed by the store. Vote for a visit day below when the poll is open.';
+    case 'visit_scheduled':
+      return 'Your store visit is scheduled. Visit the store on the confirmed day.';
+    case 'completed':
+      return 'This bulk buy commitment is complete.';
+    default:
+      return null;
+  }
 }
 
 export default function CampaignDetailScreen() {
@@ -48,17 +68,32 @@ export default function CampaignDetailScreen() {
   const [campaign, setCampaign] = useState(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
+  const [offerCommitments, setOfferCommitments] = useState([]);
+  const [razorpayVisible, setRazorpayVisible] = useState(false);
+  const [razorpayCheckout, setRazorpayCheckout] = useState(null);
 
   const load = useCallback(async () => {
     try {
       const res = await api.getBulkBuyCampaign(campaignId);
       setCampaign(res.campaign);
+      if (canUseShopBulkBuy && res.campaign?.offers?.length) {
+        const shopIds = new Set((user?.shops || []).map((shop) => shop.id));
+        const shopOffer = res.campaign.offers.find((offer) => shopIds.has(offer.shopId));
+        if (shopOffer) {
+          const commitmentsRes = await api.getBulkBuyOfferCommitments(campaignId, shopOffer.id);
+          setOfferCommitments(commitmentsRes.commitments || []);
+        } else {
+          setOfferCommitments([]);
+        }
+      } else {
+        setOfferCommitments([]);
+      }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [campaignId]);
+  }, [campaignId, canUseShopBulkBuy, user?.shops]);
 
   useFocusEffect(useCallback(() => {
     setLoading(true);
@@ -90,14 +125,81 @@ export default function CampaignDetailScreen() {
   const acceptOffer = (offerId) => runAction(async () => {
     const res = await api.acceptBulkBuyOffer(campaignId, offerId);
     setCampaign(res.campaign);
-    Alert.alert('Offer accepted', 'Pay the booking token to confirm your spot.');
+    const commitment = res.campaign?.myCommitment;
+    if (commitment?.commitmentStatus === 'token_pending') {
+      Alert.alert(
+        'Offer accepted',
+        `Pay the ${formatBulkBuyTokenAmount(commitment.tokenAmount)} booking token below. The store will confirm your payment.`,
+      );
+    } else {
+      Alert.alert('Offer accepted', 'Your spot is confirmed. Vote for a visit day when the poll opens.');
+    }
   });
 
-  const payToken = () => runAction(async () => {
-    const res = await api.mockPayBulkBuyToken(campaignId);
-    setCampaign(res.campaign);
-    Alert.alert('Token paid', 'Your booking is confirmed. Vote for a visit day when the poll is open.');
-  });
+  const payToken = async () => {
+    setActing(true);
+    try {
+      const order = await api.createBulkBuyTokenOrder(campaignId);
+      setRazorpayCheckout({
+        keyId: order.keyId,
+        razorpayOrderId: order.razorpayOrderId,
+        amount: order.amount,
+        currency: order.currency,
+        campaignId,
+        customerName: user?.name,
+        customerPhone: user?.phone,
+      });
+      setRazorpayVisible(true);
+    } catch {
+      try {
+        const res = await api.mockPayBulkBuyToken(campaignId);
+        setCampaign(res.campaign);
+        await load();
+        Alert.alert(
+          'Payment submitted',
+          'Your token payment was recorded. The store will confirm it shortly.',
+        );
+      } catch (err) {
+        Alert.alert('Error', err.message || 'Could not submit token payment');
+      }
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const onRazorpaySuccess = async (data) => {
+    setRazorpayVisible(false);
+    await runAction(async () => {
+      const res = await api.verifyBulkBuyTokenPayment(campaignId, {
+        razorpayOrderId: data.razorpay_order_id,
+        razorpayPaymentId: data.razorpay_payment_id,
+        razorpaySignature: data.razorpay_signature,
+      });
+      setCampaign(res.campaign);
+      Alert.alert(
+        'Payment submitted',
+        'Your online payment was received. The store will confirm your booking token.',
+      );
+    });
+  };
+
+  const confirmCustomerToken = (participantId, customerName) => {
+    Alert.alert(
+      'Confirm token payment',
+      `Confirm that you received the booking token from ${customerName || 'this customer'}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm payment',
+          onPress: () => runAction(async () => {
+            const res = await api.confirmBulkBuyTokenPayment(campaignId, participantId);
+            setCampaign(res.campaign);
+            Alert.alert('Confirmed', 'Token payment confirmed. The customer can now vote for visit day.');
+          }),
+        },
+      ],
+    );
+  };
 
   const votePoll = (pollDate) => runAction(async () => {
     const res = await api.voteBulkBuyVisitPoll(campaignId, pollDate);
@@ -125,6 +227,20 @@ export default function CampaignDetailScreen() {
     ]);
   };
 
+  const myShopOffer = useMemo(() => {
+    if (!canUseShopBulkBuy || !user?.shops?.length || !campaign?.offers?.length) return null;
+    const shopIds = new Set(user.shops.map((shop) => shop.id));
+    return campaign.offers.find((offer) => shopIds.has(offer.shopId)) || null;
+  }, [campaign?.offers, canUseShopBulkBuy, user?.shops]);
+
+  const openOfferEditor = (offer = myShopOffer) => {
+    navigation.navigate('BulkBuySubmitOffer', {
+      campaignId,
+      campaignTitle: campaign?.title || 'Campaign',
+      offer: offer || undefined,
+    });
+  };
+
   if (loading || !campaign) {
     return (
       <View style={styles.center}>
@@ -139,8 +255,14 @@ export default function CampaignDetailScreen() {
   const myCommitment = campaign.myCommitment;
   const pollDates = campaign.visitPollDates || [];
   const pollVotes = campaign.pollVoteSummary || {};
+  const shopIds = new Set((user?.shops || []).map((shop) => shop.id));
+  const canVoteInPoll = campaign.isSubscribed && (
+    !myCommitment?.tokenAmount
+    || ['token_paid', 'visit_scheduled', 'completed'].includes(myCommitment?.commitmentStatus)
+  );
 
   return (
+    <>
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>{campaign.title}</Text>
       <Text style={styles.category}>{campaign.productCategoryLabel}</Text>
@@ -159,10 +281,92 @@ export default function CampaignDetailScreen() {
         <View style={styles.commitmentBox}>
           <Text style={styles.commitmentTitle}>Your commitment</Text>
           <Text style={styles.meta}>Store: {myCommitment.acceptedOffer?.shop?.name || 'Selected store'}</Text>
+          {myCommitment.acceptedOffer?.shop?.phone ? (
+            <Text style={styles.meta}>Store phone: {myCommitment.acceptedOffer.shop.phone}</Text>
+          ) : null}
+          {myCommitment.acceptedOffer?.shop?.address ? (
+            <Text style={styles.meta}>Address: {myCommitment.acceptedOffer.shop.address}</Text>
+          ) : null}
+          <Text style={styles.meta}>Booking token: {formatBulkBuyTokenAmount(myCommitment.tokenAmount)}</Text>
+          {myCommitment.acceptedOffer?.proposedDealDay ? (
+            <Text style={styles.meta}>Store proposed visit: {myCommitment.acceptedOffer.proposedDealDay}</Text>
+          ) : null}
           <Text style={styles.meta}>Status: {myCommitment.commitmentStatus?.replace(/_/g, ' ')}</Text>
+          {myCommitment.tokenPaymentStatus ? (
+            <Text style={styles.meta}>
+              Payment: {formatBulkBuyTokenPaymentStatus(myCommitment.tokenPaymentStatus)}
+            </Text>
+          ) : null}
+          {myCommitment.razorpayPaymentId ? (
+            <Text style={styles.meta}>Payment ref: {myCommitment.razorpayPaymentId}</Text>
+          ) : null}
+          {myCommitment.tokenConfirmedAt ? (
+            <Text style={styles.meta}>
+              Confirmed by store: {String(myCommitment.tokenConfirmedAt).slice(0, 10)}
+            </Text>
+          ) : null}
           {myCommitment.scheduledVisitAt ? (
             <Text style={styles.meta}>Visit day: {String(myCommitment.scheduledVisitAt).slice(0, 10)}</Text>
           ) : null}
+          {commitmentNextStep(myCommitment) ? (
+            <Text style={styles.nextStep}>{commitmentNextStep(myCommitment)}</Text>
+          ) : null}
+          {myCommitment.commitmentStatus === 'token_pending' && (
+            <TouchableOpacity style={styles.primaryBtn} onPress={payToken} disabled={acting}>
+              <Text style={styles.primaryBtnText}>
+                Pay booking token ({formatBulkBuyTokenAmount(myCommitment.tokenAmount)})
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {myShopOffer && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Your store commitments</Text>
+          <Text style={styles.offerNote}>
+            Customers who accepted your offer ({formatBulkBuyTokenAmount(myShopOffer.tokenAmount)} token).
+          </Text>
+          {offerCommitments.length === 0 ? (
+            <Text style={styles.meta}>No customers have committed to your offer yet.</Text>
+          ) : (
+            offerCommitments.map((row) => (
+              <View key={row.id} style={styles.commitmentRow}>
+                <Text style={styles.offerShop}>{row.customer?.name || 'Customer'}</Text>
+                <Text style={styles.meta}>{row.customer?.phone || ''}</Text>
+                <Text style={styles.meta}>Status: {row.commitmentStatus?.replace(/_/g, ' ')}</Text>
+                <Text style={styles.meta}>Token: {formatBulkBuyTokenAmount(row.tokenAmount)}</Text>
+                {row.tokenPaymentStatus ? (
+                  <Text style={styles.meta}>
+                    Payment: {formatBulkBuyTokenPaymentStatus(row.tokenPaymentStatus)}
+                  </Text>
+                ) : null}
+                {row.razorpayPaymentId ? (
+                  <Text style={styles.meta}>Payment ref: {row.razorpayPaymentId}</Text>
+                ) : null}
+                {row.commitmentStatus === 'token_payment_submitted' && (
+                  <TouchableOpacity
+                    style={styles.confirmBtn}
+                    onPress={() => confirmCustomerToken(row.id, row.customer?.name)}
+                    disabled={acting}
+                  >
+                    <Text style={styles.confirmBtnText}>Confirm token payment</Text>
+                  </TouchableOpacity>
+                )}
+                {row.commitmentStatus === 'visit_scheduled' && (
+                  <TouchableOpacity
+                    style={styles.secondaryActionBtn}
+                    onPress={() => runAction(async () => {
+                      await api.completeBulkBuyCommitment(campaignId, row.id);
+                    })}
+                    disabled={acting}
+                  >
+                    <Text style={styles.secondaryActionText}>Mark visit complete</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))
+          )}
         </View>
       )}
 
@@ -199,7 +403,7 @@ export default function CampaignDetailScreen() {
         </TouchableOpacity>
       )}
 
-      {pollDates.length > 0 && campaign.isSubscribed && (
+      {pollDates.length > 0 && canVoteInPoll && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Vote for visit day</Text>
           <Text style={styles.offerNote}>Pick a day that works for you. If it matches a store&apos;s proposed day, that becomes the final visit day.</Text>
@@ -212,20 +416,15 @@ export default function CampaignDetailScreen() {
         </View>
       )}
 
-      {myCommitment?.commitmentStatus === 'token_pending' && (
-        <TouchableOpacity style={styles.primaryBtn} onPress={payToken} disabled={acting}>
-          <Text style={styles.primaryBtnText}>
-            Pay booking token ({formatBulkBuyTokenAmount(myCommitment.tokenAmount)})
-          </Text>
-        </TouchableOpacity>
-      )}
-
       {canOffer && (
         <TouchableOpacity
           style={styles.primaryBtn}
-          onPress={() => navigation.navigate('BulkBuySubmitOffer', { campaignId, campaignTitle: campaign.title })}
+          onPress={() => openOfferEditor()}
+          disabled={acting}
         >
-          <Text style={styles.primaryBtnText}>Submit store offer</Text>
+          <Text style={styles.primaryBtnText}>
+            {myShopOffer ? 'Edit your store offer' : 'Submit store offer'}
+          </Text>
         </TouchableOpacity>
       )}
 
@@ -234,6 +433,7 @@ export default function CampaignDetailScreen() {
           <Text style={styles.sectionTitle}>Store offers</Text>
           {campaign.offers.map((offer) => {
             const isMyOffer = myCommitment?.acceptedOfferId === offer.id;
+            const isOwnShopOffer = canUseShopBulkBuy && shopIds.has(offer.shopId);
             const canAccept = isCustomer
               && ['offers_available', 'ready_for_offers'].includes(campaign.status)
               && !myCommitment;
@@ -271,6 +471,11 @@ export default function CampaignDetailScreen() {
                     <Text style={styles.acceptBtnText}>Accept this deal</Text>
                   </TouchableOpacity>
                 )}
+                {isOwnShopOffer && canOffer && (
+                  <TouchableOpacity style={styles.editOfferBtn} onPress={() => openOfferEditor(offer)} disabled={acting}>
+                    <Text style={styles.editOfferBtnText}>Edit offer</Text>
+                  </TouchableOpacity>
+                )}
                 {isMyOffer && (
                   <Text style={styles.selectedBadge}>You selected this store</Text>
                 )}
@@ -280,6 +485,17 @@ export default function CampaignDetailScreen() {
         </View>
       )}
     </ScrollView>
+    <RazorpayCheckout
+      visible={razorpayVisible}
+      checkout={razorpayCheckout}
+      onSuccess={onRazorpaySuccess}
+      onClose={() => setRazorpayVisible(false)}
+      onError={(msg) => {
+        setRazorpayVisible(false);
+        Alert.alert('Payment failed', msg);
+      }}
+    />
+    </>
   );
 }
 
@@ -310,6 +526,15 @@ function createStyles(colors) {
       borderColor: colors.brand,
     },
     commitmentTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 4 },
+    nextStep: { fontSize: 14, color: colors.text, marginTop: 10, lineHeight: 20, fontWeight: '600' },
+    commitmentRow: {
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      padding: 14,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
     stat: { fontSize: 28, fontWeight: '800', color: colors.text },
     statSub: { fontSize: 14, color: colors.textMuted, marginTop: 4, textAlign: 'center' },
     editBtn: {
@@ -376,6 +601,24 @@ function createStyles(colors) {
       alignItems: 'center',
     },
     acceptBtnText: { color: '#fff', fontWeight: '700' },
+    editOfferBtn: {
+      marginTop: 12,
+      paddingVertical: 10,
+      borderRadius: 8,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.brand,
+      backgroundColor: colors.card,
+    },
+    editOfferBtnText: { color: colors.brand, fontWeight: '700' },
+    confirmBtn: {
+      marginTop: 12,
+      backgroundColor: colors.brand,
+      paddingVertical: 10,
+      borderRadius: 8,
+      alignItems: 'center',
+    },
+    confirmBtnText: { color: '#fff', fontWeight: '700' },
     selectedBadge: { marginTop: 10, color: colors.brand, fontWeight: '700' },
     pollChip: {
       flexDirection: 'row',

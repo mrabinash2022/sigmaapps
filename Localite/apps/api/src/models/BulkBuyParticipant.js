@@ -77,6 +77,16 @@ const BulkBuyParticipant = sequelize.define('BulkBuyParticipant', {
     allowNull: true,
     field: 'token_paid_at',
   },
+  tokenConfirmedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'token_confirmed_at',
+  },
+  tokenConfirmedByUserId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    field: 'token_confirmed_by_user_id',
+  },
   completedAt: {
     type: DataTypes.DATE,
     allowNull: true,

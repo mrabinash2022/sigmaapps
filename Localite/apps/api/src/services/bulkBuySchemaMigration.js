@@ -167,8 +167,15 @@ export async function migrateBulkBuyV012Schema() {
   `);
 
   await sequelize.query(`
-    INSERT INTO "BulkBuyPlatformSettings" (id)
-    VALUES (1)
+    INSERT INTO "BulkBuyPlatformSettings" (
+      id,
+      collection_period_days,
+      default_min_subscribers,
+      auto_close_grace_days_after_deal_day,
+      "createdAt",
+      "updatedAt"
+    )
+    VALUES (1, 7, 10, 3, NOW(), NOW())
     ON CONFLICT (id) DO NOTHING;
   `);
 
@@ -176,5 +183,29 @@ export async function migrateBulkBuyV012Schema() {
     CREATE INDEX IF NOT EXISTS idx_bulk_buy_participants_offer
     ON "BulkBuyParticipants"(accepted_offer_id)
     WHERE accepted_offer_id IS NOT NULL;
+  `);
+
+  await migrateBulkBuyTokenConfirmationSchema();
+}
+
+export async function migrateBulkBuyTokenConfirmationSchema() {
+  await sequelize.query(`
+    DO $$ BEGIN
+      ALTER TYPE enum_bulk_buy_commitment_status ADD VALUE 'token_payment_submitted';
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$;
+  `);
+
+  await sequelize.query(`
+    DO $$ BEGIN
+      ALTER TYPE enum_bulk_buy_token_payment_status ADD VALUE 'submitted';
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$;
+  `);
+
+  await sequelize.query(`
+    ALTER TABLE "BulkBuyParticipants"
+    ADD COLUMN IF NOT EXISTS token_confirmed_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS token_confirmed_by_user_id UUID REFERENCES "Users"(id) ON DELETE SET NULL;
   `);
 }

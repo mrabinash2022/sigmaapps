@@ -39,3 +39,15 @@ export function formatBulkBuyTokenAmount(amount) {
 export function formatBulkBuyAcceptanceCount(acceptanceCount, subscriberCount) {
   return `${acceptanceCount || 0} of ${subscriberCount || 0} committed`;
 }
+
+export function formatBulkBuyTokenPaymentStatus(status) {
+  const map = {
+    not_required: 'No token required',
+    pending: 'Payment pending',
+    submitted: 'Awaiting store confirmation',
+    paid: 'Confirmed by store',
+    failed: 'Payment failed',
+    refunded: 'Refunded',
+  };
+  return map[status] || status || '';
+}

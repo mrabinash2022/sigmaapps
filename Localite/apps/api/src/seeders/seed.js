@@ -114,7 +114,7 @@ const SHOPS = [
   { name: 'Wellness Medical Store', category: ShopCategory.MEDICINES, ownerName: 'Prakash Jadhav', phone: '9876500004', address: 'Vision One Mall Road', rank: 2, itemTypes: 'Prescription medicines, Ayurvedic' },
   { name: 'Fresh Farm Vegetables', category: ShopCategory.VEGETABLES, ownerName: 'Ramesh Bhosale', phone: '9876500005', address: 'Weekly Market Lane', rank: 1, itemTypes: 'Fresh vegetables, fruits' },
   { name: 'Green Basket Veg Mart', category: ShopCategory.VEGETABLES, ownerName: 'Vijay Shinde', phone: '9876500006', address: 'Kohinoor Arcade', rank: 2, itemTypes: 'Organic vegetables, exotic fruits' },
-  { name: 'Daily Needs Grocery', category: ShopCategory.GROCERY, ownerName: 'Mahesh Pawar', phone: '9876500007', address: 'Roseland Residency', rank: 1, itemTypes: 'Grocery, pulses, rice, oil' },
+  { name: 'Daily Needs Grocery', category: ShopCategory.GROCERY, ownerName: 'Mahesh Pawar', phone: '9876500007', address: 'Roseland Residency', rank: 1, itemTypes: 'Grocery, pulses, rice, oil', bulkBuyEnabled: true },
   { name: 'Sahyadri Kirana', category: ShopCategory.GROCERY, ownerName: 'Anil More', phone: '9876500008', address: 'Pimple Saudagar Chowk', rank: 2, itemTypes: 'Kirana, daily essentials' },
   { name: 'Oven Fresh Bakery', category: ShopCategory.BAKERY, ownerName: 'Sunil Gaikwad', phone: '9876500009', address: 'Westend Mall Road', rank: 1, itemTypes: 'Bread, cakes, pastries' },
   { name: 'City Bakery & Confectionery', category: ShopCategory.BAKERY, ownerName: 'Nitin Chavan', phone: '9876500010', address: 'Near D-Mart, Pimple Saudagar', rank: 2, itemTypes: 'Bakery items, cookies' },

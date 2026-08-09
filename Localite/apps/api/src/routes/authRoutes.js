@@ -70,7 +70,16 @@ function assertCaptcha(captchaToken, captchaAnswer) {
 async function issueAuthForUser(user, userAgent) {
   await user.update({ lastLoginAt: new Date() });
   const tokens = await issueTokenPair(user, userAgent);
-  return formatAuthResponse(user, tokens);
+  const includes = [{ association: 'area', attributes: ['id', 'name', 'city'] }];
+  if (user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN) {
+    includes.push({
+      association: 'shops',
+      attributes: ['id', 'name', 'phone', 'shopCode', 'status', 'operationalStatus', 'bulkBuyEnabled'],
+      through: { attributes: [] },
+    });
+  }
+  const fullUser = await User.findByPk(user.id, { include: includes });
+  return formatAuthResponse(fullUser, tokens);
 }
 
 // ─── Captcha ─────────────────────────────────────────────────────

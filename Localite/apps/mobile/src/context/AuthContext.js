@@ -5,13 +5,17 @@ import Constants from 'expo-constants';
 import { api, loadTokens, saveTokens, clearTokens } from '../services/api';
 import { UserRole } from '@localite/shared';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+const isExpoGo = Constants.appOwnership === 'expo';
+
+if (!isExpoGo) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+}
 
 const AuthContext = createContext(null);
 
@@ -24,6 +28,8 @@ function getExpoProjectId() {
 }
 
 async function registerForPushNotifications() {
+  if (isExpoGo) return null;
+
   try {
     const { status: existing } = await Notifications.getPermissionsAsync();
     let finalStatus = existing;

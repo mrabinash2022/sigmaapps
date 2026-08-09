@@ -170,6 +170,28 @@ describe('bulk buy v0.12', () => {
     offerId = res.body.offer.id;
   });
 
+  it('bulk partner store can update existing offer', async () => {
+    const { token } = await login(DEMO.shopAdmin);
+    const res = await api()
+      .post(`/api/bulk-buy/campaigns/${campaignId}/offers`)
+      .set(authHeader(token))
+      .send({
+        shopId,
+        discountType: 'percent',
+        discountValue: 15,
+        tokenAmount: 149,
+        proposedDealDay: dealDay,
+        termsText: 'Updated bulk offer terms',
+        extras: { extendedWarrantyMonths: 18, installation: false, freebies: 'Gift voucher' },
+      });
+    expect(res.status).toBe(201);
+    expect(res.body.offer.id).toBe(offerId);
+    expect(Number(res.body.offer.discountValue)).toBe(15);
+    expect(Number(res.body.offer.tokenAmount)).toBe(149);
+    expect(res.body.offer.termsText).toContain('Updated');
+    expect(res.body.offer.extras.extendedWarrantyMonths).toBe(18);
+  });
+
   it('rejects store offer without proposedDealDay', async () => {
     const { token } = await login(DEMO.shopAdmin);
     const res = await api()
@@ -222,7 +244,21 @@ describe('bulk buy v0.12', () => {
       .patch(`/api/bulk-buy/campaigns/${campaignId}/commitment/mock-pay-token`)
       .set(authHeader(token));
     expect(paid.status).toBe(200);
-    expect(paid.body.campaign.myCommitment?.commitmentStatus).toBe('token_paid');
+    expect(paid.body.campaign.myCommitment?.commitmentStatus).toBe('token_payment_submitted');
+    expect(paid.body.campaign.myCommitment?.tokenPaymentStatus).toBe('submitted');
+
+    const participantId = paid.body.campaign.myCommitment.id;
+    const { token: shopToken } = await login(DEMO.shopAdmin);
+    const confirmed = await api()
+      .patch(`/api/bulk-buy/campaigns/${campaignId}/commitments/${participantId}/confirm-token`)
+      .set(authHeader(shopToken));
+    expect(confirmed.status).toBe(200);
+
+    const detail = await api()
+      .get(`/api/bulk-buy/campaigns/${campaignId}`)
+      .set(authHeader(token));
+    expect(detail.body.campaign.myCommitment?.commitmentStatus).toBe('token_paid');
+    expect(detail.body.campaign.myCommitment?.tokenPaymentStatus).toBe('paid');
   });
 
   it('prevents accepting a second store after first commitment', async () => {

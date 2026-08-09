@@ -713,8 +713,22 @@ export const api = {
     request(`/api/bulk-buy/campaigns/${campaignId}/offers/${offerId}/accept`, { method: 'POST' }),
   withdrawBulkBuyCommitment: (campaignId) =>
     request(`/api/bulk-buy/campaigns/${campaignId}/commitment`, { method: 'DELETE' }),
-  mockPayBulkBuyToken: (campaignId) =>
-    request(`/api/bulk-buy/campaigns/${campaignId}/commitment/mock-pay-token`, { method: 'PATCH' }),
+  mockPayBulkBuyToken: (campaignId, paymentReference) =>
+    request(`/api/bulk-buy/campaigns/${campaignId}/commitment/mock-pay-token`, {
+      method: 'PATCH',
+      body: JSON.stringify(paymentReference ? { paymentReference } : {}),
+    }),
+  createBulkBuyTokenOrder: (campaignId) =>
+    request(`/api/bulk-buy/campaigns/${campaignId}/commitment/token-order`, { method: 'POST' }),
+  verifyBulkBuyTokenPayment: (campaignId, paymentData) =>
+    request(`/api/bulk-buy/campaigns/${campaignId}/commitment/verify-token`, {
+      method: 'POST',
+      body: JSON.stringify(paymentData),
+    }),
+  confirmBulkBuyTokenPayment: (campaignId, participantId) =>
+    request(`/api/bulk-buy/campaigns/${campaignId}/commitments/${participantId}/confirm-token`, {
+      method: 'PATCH',
+    }),
   setBulkBuyVisitPoll: (campaignId, visitPollDates) =>
     request(`/api/bulk-buy/campaigns/${campaignId}/visit-poll`, {
       method: 'PATCH',

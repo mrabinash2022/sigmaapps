@@ -17,13 +17,15 @@ import { getCampaignById } from './bulkBuyService.js';
 import {
   notifyBulkBuyDealDayConfirmed,
   notifyBulkBuyOfferAccepted,
-  notifyBulkBuyTokenPaid,
+  notifyBulkBuyTokenConfirmed,
+  notifyBulkBuyTokenSubmitted,
 } from './bulkBuyNotificationService.js';
 import { getBulkBuySettings } from './bulkBuySettingsService.js';
 
 const ACTIVE_COMMITMENTS = [
   BulkBuyCommitmentStatus.ACCEPTED,
   BulkBuyCommitmentStatus.TOKEN_PENDING,
+  BulkBuyCommitmentStatus.TOKEN_PAYMENT_SUBMITTED,
   BulkBuyCommitmentStatus.TOKEN_PAID,
   BulkBuyCommitmentStatus.VISIT_SCHEDULED,
   BulkBuyCommitmentStatus.COMPLETED,
@@ -64,11 +66,25 @@ export async function getPollVoteSummary(campaignId) {
 
 function serializeCommitment(participant) {
   const json = participant.toJSON ? participant.toJSON() : participant;
+  const offer = json.acceptedOffer;
   return {
     id: json.id,
     customerId: json.customerId,
     customer: json.customer ? { id: json.customer.id, name: json.customer.name, phone: json.customer.phone } : undefined,
     acceptedOfferId: json.acceptedOfferId,
+    acceptedOffer: offer ? {
+      id: offer.id,
+      shopId: offer.shopId,
+      tokenAmount: offer.tokenAmount != null ? Number(offer.tokenAmount) : 0,
+      proposedDealDay: offer.proposedDealDay,
+      confirmedDealDay: offer.confirmedDealDay,
+      shop: offer.shop ? {
+        id: offer.shop.id,
+        name: offer.shop.name,
+        phone: offer.shop.phone,
+        address: offer.shop.address,
+      } : undefined,
+    } : undefined,
     commitmentStatus: json.commitmentStatus,
     tokenAmount: json.tokenAmount != null ? Number(json.tokenAmount) : null,
     tokenPaymentStatus: json.tokenPaymentStatus,
@@ -76,6 +92,9 @@ function serializeCommitment(participant) {
     scheduledVisitAt: json.scheduledVisitAt,
     acceptedAt: json.acceptedAt,
     tokenPaidAt: json.tokenPaidAt,
+    tokenConfirmedAt: json.tokenConfirmedAt,
+    razorpayOrderId: json.razorpayOrderId,
+    razorpayPaymentId: json.razorpayPaymentId,
     completedAt: json.completedAt,
   };
 }
@@ -174,6 +193,20 @@ export async function voteVisitPoll(user, campaignId, pollDate) {
     throw err;
   }
 
+  const tokenAmount = Number(participant.tokenAmount) || 0;
+  if (participant.acceptedOfferId && tokenAmount > 0) {
+    const canVote = [
+      BulkBuyCommitmentStatus.TOKEN_PAID,
+      BulkBuyCommitmentStatus.VISIT_SCHEDULED,
+      BulkBuyCommitmentStatus.COMPLETED,
+    ].includes(participant.commitmentStatus);
+    if (!canVote) {
+      const err = new Error('Pay the booking token and wait for store confirmation before voting');
+      err.statusCode = 400;
+      throw err;
+    }
+  }
+
   await participant.update({ pollVoteDate: voteKey });
   await maybeConfirmOfferDealDays(campaignId);
   return getCampaignById(campaignId, user);
@@ -249,8 +282,9 @@ export async function withdrawOfferAcceptance(user, campaignId) {
     err.statusCode = 400;
     throw err;
   }
-  if (participant.tokenPaymentStatus === BulkBuyTokenPaymentStatus.PAID) {
-    const err = new Error('Cannot withdraw after token payment');
+  if (participant.tokenPaymentStatus === BulkBuyTokenPaymentStatus.PAID
+    || participant.tokenPaymentStatus === BulkBuyTokenPaymentStatus.SUBMITTED) {
+    const err = new Error('Cannot withdraw after token payment has been submitted');
     err.statusCode = 400;
     throw err;
   }
@@ -285,8 +319,9 @@ export async function createTokenPaymentOrder(user, campaignId) {
     err.statusCode = 400;
     throw err;
   }
-  if (participant.tokenPaymentStatus === BulkBuyTokenPaymentStatus.PAID) {
-    const err = new Error('Token already paid');
+  if (participant.tokenPaymentStatus === BulkBuyTokenPaymentStatus.PAID
+    || participant.tokenPaymentStatus === BulkBuyTokenPaymentStatus.SUBMITTED) {
+    const err = new Error('Token already paid or awaiting store confirmation');
     err.statusCode = 400;
     throw err;
   }
@@ -341,33 +376,94 @@ export async function verifyTokenPayment(user, campaignId, payload) {
 
   const now = new Date();
   await participant.update({
-    tokenPaymentStatus: BulkBuyTokenPaymentStatus.PAID,
-    commitmentStatus: BulkBuyCommitmentStatus.TOKEN_PAID,
+    tokenPaymentStatus: BulkBuyTokenPaymentStatus.SUBMITTED,
+    commitmentStatus: BulkBuyCommitmentStatus.TOKEN_PAYMENT_SUBMITTED,
     tokenPaidAt: now,
     razorpayOrderId,
     razorpayPaymentId,
   });
 
   const campaign = await BulkBuyCampaign.findByPk(campaignId);
-  await notifyBulkBuyTokenPaid(campaign, participant.acceptedOffer, user).catch(() => {});
-  await maybeConfirmOfferDealDays(campaignId);
+  await notifyBulkBuyTokenSubmitted(campaign, participant.acceptedOffer, user).catch(() => {});
   return getCampaignById(campaignId, user);
 }
 
-export async function mockTokenPayment(user, campaignId) {
+export async function submitTokenPayment(user, campaignId, { paymentReference } = {}) {
+  const participant = await BulkBuyParticipant.findOne({
+    where: { campaignId, customerId: user.id },
+    include: [{ association: 'acceptedOffer', include: [{ association: 'shop' }] }],
+  });
+  if (!participant?.acceptedOfferId) {
+    const err = new Error('Accept a store offer first');
+    err.statusCode = 400;
+    throw err;
+  }
+  const tokenAmount = Number(participant.tokenAmount) || 0;
+  if (tokenAmount <= 0) {
+    const err = new Error('No token payment required for this offer');
+    err.statusCode = 400;
+    throw err;
+  }
+  if (participant.tokenPaymentStatus === BulkBuyTokenPaymentStatus.SUBMITTED
+    || participant.tokenPaymentStatus === BulkBuyTokenPaymentStatus.PAID) {
+    const err = new Error('Token payment already submitted');
+    err.statusCode = 400;
+    throw err;
+  }
+
   if (isRazorpayEnabled()) {
     const err = new Error('Use create-token-order and verify-token-payment endpoints');
     err.statusCode = 400;
     throw err;
   }
 
-  const participant = await BulkBuyParticipant.findOne({
-    where: { campaignId, customerId: user.id },
-    include: [{ association: 'acceptedOffer' }],
+  const now = new Date();
+  const reference = paymentReference?.trim() || `mock_${Date.now()}`;
+  await participant.update({
+    tokenPaymentStatus: BulkBuyTokenPaymentStatus.SUBMITTED,
+    commitmentStatus: BulkBuyCommitmentStatus.TOKEN_PAYMENT_SUBMITTED,
+    tokenPaidAt: now,
+    razorpayPaymentId: reference,
   });
-  if (!participant?.acceptedOfferId) {
-    const err = new Error('Accept a store offer first');
+
+  const campaign = await BulkBuyCampaign.findByPk(campaignId);
+  await notifyBulkBuyTokenSubmitted(campaign, participant.acceptedOffer, user).catch(() => {});
+  return getCampaignById(campaignId, user);
+}
+
+export async function mockTokenPayment(user, campaignId) {
+  return submitTokenPayment(user, campaignId);
+}
+
+export async function confirmTokenPayment(actor, campaignId, participantId) {
+  const participant = await BulkBuyParticipant.findByPk(participantId, {
+    include: [
+      { association: 'customer', attributes: ['id', 'name', 'phone'] },
+      { association: 'acceptedOffer', include: [{ association: 'shop', attributes: ['id', 'name', 'phone'] }] },
+    ],
+  });
+  if (!participant || participant.campaignId !== campaignId) {
+    const err = new Error('Commitment not found');
+    err.statusCode = 404;
+    throw err;
+  }
+  if (participant.commitmentStatus !== BulkBuyCommitmentStatus.TOKEN_PAYMENT_SUBMITTED) {
+    const err = new Error('No token payment awaiting confirmation');
     err.statusCode = 400;
+    throw err;
+  }
+
+  if (actor.role === UserRole.ADMIN && participant.acceptedOfferId) {
+    const offer = await BulkBuyStoreOffer.findByPk(participant.acceptedOfferId);
+    const link = await ShopUser.findOne({ where: { userId: actor.id, shopId: offer.shopId } });
+    if (!link) {
+      const err = new Error('Access denied');
+      err.statusCode = 403;
+      throw err;
+    }
+  } else if (actor.role !== UserRole.SUPER_ADMIN) {
+    const err = new Error('Only the store can confirm token payment');
+    err.statusCode = 403;
     throw err;
   }
 
@@ -375,14 +471,14 @@ export async function mockTokenPayment(user, campaignId) {
   await participant.update({
     tokenPaymentStatus: BulkBuyTokenPaymentStatus.PAID,
     commitmentStatus: BulkBuyCommitmentStatus.TOKEN_PAID,
-    tokenPaidAt: now,
-    razorpayPaymentId: `mock_${Date.now()}`,
+    tokenConfirmedAt: now,
+    tokenConfirmedByUserId: actor.id,
   });
 
   const campaign = await BulkBuyCampaign.findByPk(campaignId);
-  await notifyBulkBuyTokenPaid(campaign, participant.acceptedOffer, user).catch(() => {});
+  await notifyBulkBuyTokenConfirmed(campaign, participant.acceptedOffer, participant.customer).catch(() => {});
   await maybeConfirmOfferDealDays(campaignId);
-  return getCampaignById(campaignId, user);
+  return getCampaignById(campaignId, actor);
 }
 
 export async function markCommitmentCompleted(actor, campaignId, participantId) {

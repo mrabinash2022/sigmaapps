@@ -16,11 +16,12 @@ import {
 import {
   acceptStoreOffer,
   closeCampaign,
+  confirmTokenPayment,
   createTokenPaymentOrder,
   listOfferCommitments,
   markCommitmentCompleted,
-  mockTokenPayment,
   setVisitPollDates,
+  submitTokenPayment,
   verifyTokenPayment,
   voteVisitPoll,
   withdrawOfferAcceptance,
@@ -218,7 +219,18 @@ router.post('/campaigns/:campaignId/commitment/verify-token', requireRole(UserRo
 
 router.patch('/campaigns/:campaignId/commitment/mock-pay-token', requireRole(UserRole.CUSTOMER), async (req, res, next) => {
   try {
-    const campaign = await mockTokenPayment(req.user, req.params.campaignId);
+    const campaign = await submitTokenPayment(req.user, req.params.campaignId, {
+      paymentReference: req.body?.paymentReference,
+    });
+    res.json({ campaign });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/campaigns/:campaignId/commitments/:participantId/confirm-token', requireRole(UserRole.ADMIN, UserRole.SUPER_ADMIN), async (req, res, next) => {
+  try {
+    const campaign = await confirmTokenPayment(req.user, req.params.campaignId, req.params.participantId);
     res.json({ campaign });
   } catch (err) {
     next(err);

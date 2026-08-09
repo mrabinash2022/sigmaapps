@@ -25,18 +25,7 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-asset",
-      [
-        "expo-speech-recognition",
-        {
-          "microphonePermission": "Allow Localite to use the microphone so you can speak your order list.",
-          "speechRecognitionPermission": "Allow Localite to convert your spoken order into text.",
-          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
-        }
-      ]
+      "expo-asset"
     ],
-    "experiments": {
-      "autolinkingModuleResolution": true
-    }
   }
 }

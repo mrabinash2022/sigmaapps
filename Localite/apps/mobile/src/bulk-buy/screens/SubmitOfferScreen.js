@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,9 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { api } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { getPrimaryShop } from '../../utils/profile';
 
 function nextSaturday() {
   const cursor = new Date();
@@ -25,9 +27,11 @@ function nextSaturday() {
 export default function SubmitOfferScreen() {
   const route = useRoute();
   const navigation = useNavigation();
-  const { campaignId, campaignTitle } = route.params;
+  const { campaignId, campaignTitle, offer: existingOffer } = route.params;
+  const { user } = useAuth();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const isEditing = Boolean(existingOffer?.id);
 
   const [discountPercent, setDiscountPercent] = useState('10');
   const [tokenAmount, setTokenAmount] = useState('99');
@@ -38,6 +42,17 @@ export default function SubmitOfferScreen() {
   const [freeInstallation, setFreeInstallation] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (!existingOffer) return;
+    setDiscountPercent(String(existingOffer.discountValue ?? ''));
+    setTokenAmount(String(existingOffer.tokenAmount ?? '0'));
+    setProposedDealDay(existingOffer.proposedDealDay || nextSaturday());
+    setTermsText(existingOffer.termsText || '');
+    setWarrantyMonths(String(existingOffer.extras?.extendedWarrantyMonths ?? '0'));
+    setFreebies(existingOffer.extras?.freebies || '');
+    setFreeInstallation(existingOffer.extras?.installation !== false);
+  }, [existingOffer]);
+
   const handleSubmit = async () => {
     if (!proposedDealDay.trim()) {
       Alert.alert('Required', 'Please set a proposed visit day (YYYY-MM-DD).');
@@ -45,8 +60,7 @@ export default function SubmitOfferScreen() {
     }
     setSubmitting(true);
     try {
-      const apps = await api.getMyShopApplication();
-      const shop = apps.shops?.[0];
+      const shop = getPrimaryShop(user);
       if (!shop) {
         Alert.alert('No shop', 'Bulk buy partner shop required.');
         return;
@@ -66,11 +80,15 @@ export default function SubmitOfferScreen() {
         },
       });
 
-      Alert.alert('Offer sent', 'Customers can accept your deal and pay the booking token.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      Alert.alert(
+        isEditing ? 'Offer updated' : 'Offer sent',
+        isEditing
+          ? 'Your store offer has been updated for subscribers.'
+          : 'Customers can accept your deal and pay the booking token.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }],
+      );
     } catch (err) {
-      Alert.alert('Error', err.message || 'Could not submit offer');
+      Alert.alert('Error', err.message || `Could not ${isEditing ? 'update' : 'submit'} offer`);
     } finally {
       setSubmitting(false);
     }
@@ -78,7 +96,10 @@ export default function SubmitOfferScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.heading}>Offer for: {campaignTitle}</Text>
+      <Text style={styles.heading}>
+        {isEditing ? 'Edit offer for: ' : 'Offer for: '}
+        {campaignTitle}
+      </Text>
 
       <Text style={styles.label}>Discount (% off MRP)</Text>
       <TextInput
@@ -147,7 +168,9 @@ export default function SubmitOfferScreen() {
         {submitting ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.submitText}>Publish offer to subscribers</Text>
+          <Text style={styles.submitText}>
+            {isEditing ? 'Save offer changes' : 'Publish offer to subscribers'}
+          </Text>
         )}
       </TouchableOpacity>
     </ScrollView>

@@ -148,6 +148,7 @@ export const BulkBuyParticipantStatus = {
 export const BulkBuyCommitmentStatus = {
   ACCEPTED: 'accepted',
   TOKEN_PENDING: 'token_pending',
+  TOKEN_PAYMENT_SUBMITTED: 'token_payment_submitted',
   TOKEN_PAID: 'token_paid',
   VISIT_SCHEDULED: 'visit_scheduled',
   COMPLETED: 'completed',
@@ -157,6 +158,7 @@ export const BulkBuyCommitmentStatus = {
 export const BulkBuyTokenPaymentStatus = {
   NOT_REQUIRED: 'not_required',
   PENDING: 'pending',
+  SUBMITTED: 'submitted',
   PAID: 'paid',
   FAILED: 'failed',
   REFUNDED: 'refunded',
